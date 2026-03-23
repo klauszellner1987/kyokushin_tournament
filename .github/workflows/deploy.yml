@@ -27,7 +27,7 @@ jobs:
 
       - run: npm ci --legacy-peer-deps
 
-      - run: npm run build
+      - run: npx vite build
         env:
           GITHUB_PAGES: "true"
           VITE_TESTING_MODE: "true"
