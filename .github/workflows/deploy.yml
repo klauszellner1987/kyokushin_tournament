@@ -32,7 +32,8 @@ jobs:
             delete pkg.dependencies['vite-plugin-pwa'];
             require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
           "
-          npm install
+          rm package-lock.json
+          npm install --no-audit --no-fund
 
       - name: Build
         run: npx vite build
