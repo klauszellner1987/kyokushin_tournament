@@ -22,33 +22,26 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
-      - run: npm ci --legacy-peer-deps
+      - name: Install dependencies (without PWA plugin)
+        run: |
+          node -e "
+            const pkg = require('./package.json');
+            delete pkg.dependencies['vite-plugin-pwa'];
+            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
+          npm install
 
       - name: Build
-        run: npx vite build > /tmp/build.log 2>&1 || true
+        run: npx vite build
         env:
           GITHUB_PAGES: "true"
           VITE_TESTING_MODE: "true"
 
-      - name: Show build log
-        if: always()
-        run: |
-          cat /tmp/build.log
-          echo '### Build Output' >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat /tmp/build.log >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-
-      - name: Check build result
-        run: |
-          if [ ! -f dist/index.html ]; then
-            echo "Build failed - dist/index.html not found"
-            exit 1
-          fi
-          cp dist/index.html dist/404.html
+      - name: Copy index.html to 404.html (SPA routing fallback)
+        run: cp dist/index.html dist/404.html
 
       - uses: actions/upload-pages-artifact@v3
         with:
