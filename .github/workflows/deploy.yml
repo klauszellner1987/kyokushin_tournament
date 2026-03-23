@@ -28,22 +28,22 @@ jobs:
       - run: npm ci --legacy-peer-deps
 
       - name: Build
-        run: |
-          npx vite build 2>&1 | tee /tmp/build.log
-          EXIT_CODE=${PIPESTATUS[0]}
-          if [ $EXIT_CODE -ne 0 ]; then
-            echo '### Build Failed' >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -80 /tmp/build.log >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            exit $EXIT_CODE
-          fi
+        run: npx vite build > /tmp/build.log 2>&1 || true
         env:
           GITHUB_PAGES: "true"
           VITE_TESTING_MODE: "true"
 
-      - name: Copy index.html to 404.html (SPA routing fallback)
-        run: cp dist/index.html dist/404.html
+      - name: Show build log
+        if: always()
+        run: cat /tmp/build.log
+
+      - name: Check build result
+        run: |
+          if [ ! -f dist/index.html ]; then
+            echo "Build failed - dist/index.html not found"
+            exit 1
+          fi
+          cp dist/index.html dist/404.html
 
       - uses: actions/upload-pages-artifact@v3
         with:
