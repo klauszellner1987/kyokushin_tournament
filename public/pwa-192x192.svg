@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="24" fill="#0f0f23"/>
+  <circle cx="96" cy="80" r="48" fill="none" stroke="#dc2626" stroke-width="6"/>
+  <line x1="96" y1="32" x2="96" y2="128" stroke="#dc2626" stroke-width="6"/>
+  <line x1="48" y1="80" x2="144" y2="80" stroke="#dc2626" stroke-width="6"/>
+  <text x="96" y="164" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="24" fill="white">KTM</text>
+</svg>

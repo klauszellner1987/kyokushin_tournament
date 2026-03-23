@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  --color-kyokushin-bg: #0f0f23;
+  --color-kyokushin-card: #1a1a2e;
+  --color-kyokushin-card-hover: #222244;
+  --color-kyokushin-nav: #16213e;
+  --color-kyokushin-red: #e63946;
+  --color-kyokushin-red-dark: #c1121f;
+  --color-kyokushin-gold: #ffd700;
+  --color-kyokushin-gold-dark: #daa520;
+  --color-kyokushin-border: #2a2a4a;
+  --color-kyokushin-text: #e0e0e0;
+  --color-kyokushin-text-muted: #8888aa;
+
+  --font-family-sans: 'Inter', sans-serif;
+  --font-family-jp: 'Noto Sans JP', sans-serif;
+}
+
+body {
+  font-family: var(--font-family-sans);
+  background-color: var(--color-kyokushin-bg);
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-kyokushin-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-kyokushin-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-kyokushin-red);
+}
