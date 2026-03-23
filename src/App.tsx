@@ -1,10 +1,15 @@
-import { BrowserRouter, Routes, Route } from 'react-router';
+import { BrowserRouter, Routes, Route, useParams } from 'react-router';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AppLayout from './components/Layout/AppLayout';
 import TournamentList from './pages/TournamentList';
 import TournamentDetail from './pages/TournamentDetail';
 import LiveView from './pages/LiveView';
 import AuthPage from './pages/AuthPage';
+
+function TournamentDetailKeyed() {
+  const { id } = useParams<{ id: string }>();
+  return <TournamentDetail key={id} />;
+}
 
 function ProtectedRoutes() {
   const { user, loading } = useAuth();
@@ -30,7 +35,7 @@ function ProtectedRoutes() {
       {/* Main app layout */}
       <Route element={<AppLayout />}>
         <Route path="/" element={<TournamentList />} />
-        <Route path="/tournament/:id" element={<TournamentDetail />} />
+        <Route path="/tournament/:id" element={<TournamentDetailKeyed />} />
       </Route>
     </Routes>
   );
@@ -39,7 +44,7 @@ function ProtectedRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <ProtectedRoutes />
       </BrowserRouter>
     </AuthProvider>

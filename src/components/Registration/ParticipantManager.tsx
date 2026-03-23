@@ -5,6 +5,7 @@ import { BELT_GRADES, BELT_COLORS } from '../../types';
 import DateInput, { parseDateDE, formatDateDE } from '../ui/DateInput';
 import { autoAssign } from '../../utils/groupAssignment';
 import CsvImportModal, { type ParsedEntry, type DuplicateEntry } from './CsvImportModal';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 interface Props {
   tournamentId: string;
@@ -18,6 +19,7 @@ interface Props {
   categories: Category[];
   matches: Match[];
   onWithdraw?: (participantId: string, status: ParticipantStatus) => Promise<void>;
+  registrationConfirmed?: boolean;
 }
 
 function getDefaultDiscipline(type: TournamentType): Discipline[] {
@@ -26,7 +28,7 @@ function getDefaultDiscipline(type: TournamentType): Discipline[] {
   return ['kumite'];
 }
 
-export default function ParticipantManager({ tournamentType, participants, categories, matches, onWithdraw }: Props) {
+export default function ParticipantManager({ tournamentType, participants, categories, matches, onWithdraw, registrationConfirmed }: Props) {
   const emptyForm: Omit<Participant, 'id'> = {
     firstName: '',
     lastName: '',
@@ -52,11 +54,12 @@ export default function ParticipantManager({ tournamentType, participants, categ
   const [importDuplicates, setImportDuplicates] = useState<DuplicateEntry[]>([]);
   const [showImportModal, setShowImportModal] = useState(false);
   const [withdrawTarget, setWithdrawTarget] = useState<Participant | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Participant | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { assignments } = useMemo(
-    () => autoAssign(participants.data, categories),
-    [participants.data, categories],
+    () => autoAssign(participants.data, categories, registrationConfirmed),
+    [participants.data, categories, registrationConfirmed],
   );
 
   const categoryMap = useMemo(() => {
@@ -208,8 +211,7 @@ export default function ParticipantManager({ tournamentType, participants, categ
     if (isInBracket(p.id)) {
       setWithdrawTarget(p);
     } else {
-      if (confirm(`${p.firstName} ${p.lastName} wirklich löschen?`))
-        participants.remove(p.id);
+      setDeleteTarget(p);
     }
   };
 
@@ -685,6 +687,18 @@ export default function ParticipantManager({ tournamentType, participants, categ
             setImportNew([]);
             setImportDuplicates([]);
           }}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Teilnehmer löschen"
+          message={`${deleteTarget.firstName} ${deleteTarget.lastName} wirklich löschen?`}
+          onConfirm={() => {
+            participants.remove(deleteTarget.id);
+            setDeleteTarget(null);
+          }}
+          onCancel={() => setDeleteTarget(null)}
         />
       )}
 

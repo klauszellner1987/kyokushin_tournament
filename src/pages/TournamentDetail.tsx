@@ -140,6 +140,7 @@ export default function TournamentDetail() {
           categories={categories.data}
           matches={matches.data}
           onWithdraw={withdrawParticipant}
+          registrationConfirmed={tournament.registrationConfirmed ?? false}
         />
       )}
       {activeTab === 'categories' && (
@@ -150,6 +151,7 @@ export default function TournamentDetail() {
           participants={participants.data}
           onUpdateParticipant={participants.update}
           onConfirmRegistration={confirmRegistration}
+          registrationConfirmed={tournament.registrationConfirmed ?? false}
         />
       )}
       {activeTab === 'bracket' && (

@@ -62,8 +62,8 @@ export default function BracketView({
   const participantMap = new Map(participants.map((p) => [p.id, p]));
 
   const { assignments } = useMemo(
-    () => autoAssign(participants, categories),
-    [participants, categories],
+    () => autoAssign(participants, categories, registrationConfirmed),
+    [participants, categories, registrationConfirmed],
   );
 
   const getName = (id: string | null) => {
@@ -226,7 +226,7 @@ export default function BracketView({
       await fightGroups.remove(g.id);
     }
 
-    const { assignments: catAssignments } = autoAssign(participants, [category]);
+    const { assignments: catAssignments } = autoAssign(participants, [category], registrationConfirmed);
     const assignment = catAssignments[0];
     if (!assignment || assignment.participantIds.length < 2) {
       const count = assignment?.participantIds.length ?? 0;
@@ -393,7 +393,9 @@ export default function BracketView({
 
                   {stats.status === 'empty' && (
                     <p className="text-xs text-kyokushin-text-muted">
-                      Noch kein Turnierbaum generiert
+                      {stats.participantCount === 0 && registrationConfirmed
+                        ? 'Kein Kampf – keine Teilnehmer'
+                        : 'Noch kein Turnierbaum generiert'}
                     </p>
                   )}
 
@@ -521,9 +523,11 @@ export default function BracketView({
           <p className="text-kyokushin-text-muted mb-6">
             {!registrationConfirmed
               ? 'Bitte zuerst die Sichtkontrolle im Kategorien-Tab abschließen.'
-              : detailParticipantCount < 2
-                ? `Nur ${detailParticipantCount} Teilnehmer in dieser Kategorie. Mindestens 2 benötigt.`
-                : `${detailParticipantCount} Teilnehmer bereit. Klicke auf "Turnierbaum generieren".`}
+              : detailParticipantCount === 0
+                ? 'Kein Kampf – keine Teilnehmer in dieser Kategorie zugewiesen.'
+                : detailParticipantCount < 2
+                  ? `Nur ${detailParticipantCount} Teilnehmer in dieser Kategorie. Mindestens 2 benötigt.`
+                  : `${detailParticipantCount} Teilnehmer bereit. Klicke auf "Turnierbaum generieren".`}
           </p>
           {detailParticipantCount >= 2 && registrationConfirmed && (
             <button

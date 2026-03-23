@@ -79,8 +79,7 @@ class PersistentStore {
         const path = d._collection;
         const { _rowId, _collection, ...data } = d;
         const current = this.cache.get(path) ?? [];
-        current.push(data as Row);
-        this.cache.set(path, current);
+        this.cache.set(path, [...current, data as Row]);
 
         const idNum = parseInt(data.id.replace('local_', ''), 10);
         if (!isNaN(idNum)) {
@@ -242,6 +241,10 @@ export function useCollection<T extends { id: string }>(
       setLoading(false);
       return;
     }
+
+    setData([]);
+    setLoading(true);
+    setError(null);
 
     const colRef = collection(fireDb, path);
     const q = constraints.length > 0 ? query(colRef, ...constraints) : colRef;

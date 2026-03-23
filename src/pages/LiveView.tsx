@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams } from 'react-router';
 import { useTournamentData } from '../hooks/useTournament';
 import { getMatOverview } from '../utils/matScheduler';
@@ -53,26 +53,84 @@ function LiveTimer({ timerEndsAt, timerPausedRemaining }: { timerEndsAt?: number
   );
 }
 
+function ResultDisplay({
+  match,
+  participantMap,
+  label,
+}: {
+  match: Match;
+  participantMap: Map<string, Participant>;
+  label: string;
+}) {
+  const winner = match.winnerId ? participantMap.get(match.winnerId) : null;
+  const f1 = match.fighter1Id ? participantMap.get(match.fighter1Id) : null;
+  const f2 = match.fighter2Id ? participantMap.get(match.fighter2Id) : null;
+  const isWalkover = match.status === 'walkover';
+  const isDsq = match.status === 'disqualification';
+
+  return (
+    <div className="text-center">
+      <p className="text-sm font-bold uppercase tracking-[0.3em] text-kyokushin-text-muted mb-6">
+        {label}
+      </p>
+      {f1 && f2 && (
+        <div className="flex items-center justify-center gap-12 mb-8">
+          <div className={`text-center ${match.winnerId === match.fighter1Id ? '' : 'opacity-40'}`}>
+            <p className="text-2xl font-bold text-white">{f1.lastName.toUpperCase()}</p>
+            <p className="text-lg text-white/80">{f1.firstName}</p>
+            <p className="text-sm text-kyokushin-text-muted mt-1">{f1.club}</p>
+          </div>
+          <div className="text-center">
+            <div className="text-4xl font-black text-white tabular-nums">
+              {isWalkover ? 'W.O.' : isDsq ? 'DSQ' : `${match.score1} : ${match.score2}`}
+            </div>
+          </div>
+          <div className={`text-center ${match.winnerId === match.fighter2Id ? '' : 'opacity-40'}`}>
+            <p className="text-2xl font-bold text-white">{f2.lastName.toUpperCase()}</p>
+            <p className="text-lg text-white/80">{f2.firstName}</p>
+            <p className="text-sm text-kyokushin-text-muted mt-1">{f2.club}</p>
+          </div>
+        </div>
+      )}
+      {winner && (
+        <div className="inline-flex items-center gap-3 bg-kyokushin-gold/15 border border-kyokushin-gold/40 rounded-full px-8 py-3">
+          <span className="text-kyokushin-gold text-lg font-black uppercase tracking-wide">
+            Sieger: {winner.lastName.toUpperCase()} {winner.firstName}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SingleMatView({
   matNumber,
   currentMatch,
   nextMatch,
+  lastCompleted,
   participantMap,
   tournamentName,
   tournamentDate,
   completedOnMat,
   totalOnMat,
   categoryName,
+  fightGroupsData,
+  categoriesData,
+  allMatches,
 }: {
   matNumber: number;
   currentMatch: Match | null;
   nextMatch: Match | null;
+  lastCompleted: Match | null;
   participantMap: Map<string, Participant>;
   tournamentName: string;
   tournamentDate: string;
   completedOnMat: number;
   totalOnMat: number;
   categoryName: string | null;
+  fightGroupsData: FightGroup[];
+  categoriesData: Category[];
+  allMatches: Match[];
 }) {
   const fighter1 = currentMatch?.fighter1Id ? participantMap.get(currentMatch.fighter1Id) : null;
   const fighter2 = currentMatch?.fighter2Id ? participantMap.get(currentMatch.fighter2Id) : null;
@@ -82,12 +140,45 @@ function SingleMatView({
   const hasTimer = currentMatch?.status === 'running' &&
     (currentMatch.timerEndsAt != null || currentMatch.timerPausedRemaining != null);
 
+  const { isExpired } = useTimer(currentMatch?.timerEndsAt, currentMatch?.timerPausedRemaining);
+  const timerExpired = hasTimer && isExpired;
+  const isExtensionReady = currentMatch?.status === 'pending' && currentMatch?.isExtension;
+
+  const showResult = !currentMatch && lastCompleted;
+
+  const activeMatch = currentMatch ?? lastCompleted;
+  const bracketData = useMemo(() => {
+    if (!activeMatch) return null;
+    const group = fightGroupsData.find((g) => g.id === activeMatch.fightGroupId);
+    if (!group) return null;
+    const category = categoriesData.find((c) => c.id === group.categoryId);
+    if (!category || category.tournamentFormat === 'round_robin') return null;
+    const catGroups = fightGroupsData.filter((g) => g.categoryId === category.id);
+    const catMatches = allMatches.filter((m) => catGroups.some((g) => g.id === m.fightGroupId));
+    if (catMatches.length === 0) return null;
+    const totalRounds = Math.max(...catMatches.map((m) => m.round), 0);
+    return { matches: catMatches, totalRounds, categoryName: category.name };
+  }, [activeMatch, fightGroupsData, categoriesData, allMatches]);
+
+  const getName = (id: string | null) => {
+    if (!id) return 'Noch offen';
+    const p = participantMap.get(id);
+    return p ? `${p.lastName}, ${p.firstName}` : 'Noch offen';
+  };
+  const getClub = (id: string | null) => {
+    if (!id) return '';
+    return participantMap.get(id)?.club ?? '';
+  };
+
+  const hasBracket = bracketData && bracketData.matches.length > 0;
+
   return (
     <div className="min-h-screen bg-[#0a0a1a] flex flex-col relative overflow-hidden">
       <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
         <Kanku size={600} />
       </div>
 
+      {/* Header */}
       <div className="flex items-center justify-between px-8 py-4 relative z-10">
         <div className="flex items-center gap-3">
           <Kanku size={32} />
@@ -99,7 +190,17 @@ function SingleMatView({
               {categoryName}
             </span>
           )}
-          {currentMatch?.isExtension && (
+          {timerExpired && (
+            <span className="bg-kyokushin-red/20 text-kyokushin-red px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide animate-pulse">
+              Zeit abgelaufen
+            </span>
+          )}
+          {isExtensionReady && (
+            <span className="bg-amber-500/20 text-amber-400 px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide animate-pulse">
+              Verlängerung
+            </span>
+          )}
+          {currentMatch?.isExtension && currentMatch?.status === 'running' && (
             <span className="bg-amber-500/20 text-amber-400 px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide">
               Verlängerung
             </span>
@@ -110,12 +211,31 @@ function SingleMatView({
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center px-8 relative z-10">
+      {/* Main fight area */}
+      <div className="flex-1 flex items-center justify-center px-8 relative z-10 min-h-0">
         {currentMatch && fighter1 && fighter2 ? (
           <div className="flex items-center gap-12 w-full max-w-5xl">
             <FighterCard fighter={fighter1} />
             <div className="text-center">
-              {hasTimer ? (
+              {timerExpired ? (
+                <div>
+                  <div className="text-5xl font-black text-kyokushin-red animate-pulse drop-shadow-[0_0_30px_rgba(230,57,70,0.5)]">
+                    KAMPF BEENDET
+                  </div>
+                  <p className="text-kyokushin-text-muted mt-4 text-lg uppercase tracking-widest">
+                    Wertung läuft...
+                  </p>
+                </div>
+              ) : isExtensionReady ? (
+                <div>
+                  <div className="text-5xl font-black text-amber-400 drop-shadow-[0_0_30px_rgba(245,158,11,0.4)]">
+                    VERLÄNGERUNG
+                  </div>
+                  <p className="text-kyokushin-text-muted mt-4 text-lg uppercase tracking-widest">
+                    Bereit machen
+                  </p>
+                </div>
+              ) : hasTimer ? (
                 <LiveTimer
                   timerEndsAt={currentMatch.timerEndsAt}
                   timerPausedRemaining={currentMatch.timerPausedRemaining}
@@ -131,6 +251,12 @@ function SingleMatView({
             </div>
             <FighterCard fighter={fighter2} />
           </div>
+        ) : showResult ? (
+          <ResultDisplay
+            match={lastCompleted}
+            participantMap={participantMap}
+            label="Ergebnis"
+          />
         ) : (
           <div className="text-center">
             <Kanku size={120} className="mx-auto mb-8 opacity-30" />
@@ -144,6 +270,7 @@ function SingleMatView({
         )}
       </div>
 
+      {/* Next fight bar */}
       {nextMatch && nextF1 && nextF2 && (
         <div className="bg-kyokushin-gold/10 border-t border-b border-kyokushin-gold/30 px-8 py-4 relative z-10">
           <div className="flex items-center justify-center gap-3 mb-3">
@@ -171,6 +298,26 @@ function SingleMatView({
         </div>
       )}
 
+      {/* Live Bracket */}
+      {hasBracket && (
+        <div className="px-8 pb-3 relative z-10">
+          <div className="bg-kyokushin-card/80 backdrop-blur border border-kyokushin-border rounded-xl p-4 overflow-x-auto">
+            <h4 className="text-[10px] font-bold text-kyokushin-text-muted uppercase tracking-widest mb-3">
+              Turnierbaum – {bracketData.categoryName}
+            </h4>
+            <BracketTree
+              matches={bracketData.matches}
+              totalRounds={bracketData.totalRounds}
+              getName={getName}
+              getClub={getClub}
+              readonly
+              currentMatchId={currentMatch?.id}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
       <div className="bg-kyokushin-nav/80 backdrop-blur border-t border-kyokushin-border px-8 py-3 flex items-center justify-between relative z-10">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-kyokushin-red animate-pulse" />
@@ -195,6 +342,85 @@ function OverviewMatTimer({ timerEndsAt, timerPausedRemaining }: { timerEndsAt?:
       isExpired ? 'text-kyokushin-red animate-pulse' : isWarning ? 'text-kyokushin-red' : isPaused ? 'text-amber-400' : 'text-white'
     }`}>
       {formatted}
+    </div>
+  );
+}
+
+function OverviewMatFight({
+  mat,
+  f1,
+  f2,
+}: {
+  mat: ReturnType<typeof getMatOverview>[number];
+  f1: Participant;
+  f2: Participant;
+}) {
+  const { isExpired } = useTimer(mat.current?.timerEndsAt, mat.current?.timerPausedRemaining);
+  const hasTimer = mat.current?.status === 'running' &&
+    (mat.current.timerEndsAt != null || mat.current.timerPausedRemaining != null);
+  const timerExpired = hasTimer && isExpired;
+  const isExtensionReady = mat.current?.status === 'pending' && mat.current?.isExtension;
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-3">
+      <div className="text-center w-full">
+        <div className="flex items-center justify-center gap-4">
+          <div className="text-right flex-1">
+            <p className="text-xl font-bold text-white">
+              {f1.lastName.toUpperCase()}
+            </p>
+            <p className="text-sm text-kyokushin-text-muted">{f1.club}</p>
+          </div>
+          {timerExpired ? (
+            <div className="text-center shrink-0">
+              <p className="text-lg font-black text-kyokushin-red animate-pulse">BEENDET</p>
+            </div>
+          ) : isExtensionReady ? (
+            <div className="text-center shrink-0">
+              <p className="text-lg font-black text-amber-400">VERL.</p>
+            </div>
+          ) : (
+            <span className="text-2xl font-black text-kyokushin-red">VS</span>
+          )}
+          <div className="text-left flex-1">
+            <p className="text-xl font-bold text-white">
+              {f2.lastName.toUpperCase()}
+            </p>
+            <p className="text-sm text-kyokushin-text-muted">{f2.club}</p>
+          </div>
+        </div>
+      </div>
+      {hasTimer && !timerExpired && (
+        <OverviewMatTimer timerEndsAt={mat.current!.timerEndsAt} timerPausedRemaining={mat.current!.timerPausedRemaining} />
+      )}
+    </div>
+  );
+}
+
+function OverviewMatResult({
+  match,
+  participantMap,
+}: {
+  match: Match;
+  participantMap: Map<string, Participant>;
+}) {
+  const winner = match.winnerId ? participantMap.get(match.winnerId) : null;
+  const isWalkover = match.status === 'walkover';
+  const isDsq = match.status === 'disqualification';
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-2">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-kyokushin-text-muted">
+        Ergebnis
+      </p>
+      <p className="text-xl font-black text-white tabular-nums">
+        {isWalkover ? 'W.O.' : isDsq ? 'DSQ' : `${match.score1} : ${match.score2}`}
+      </p>
+      {winner && (
+        <p className="text-sm font-bold text-kyokushin-gold">
+          {winner.lastName.toUpperCase()}
+        </p>
+      )}
     </div>
   );
 }
@@ -314,28 +540,13 @@ function OverviewView({
                 )}
 
                 {f1 && f2 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center gap-3">
-                    <div className="text-center w-full">
-                      <div className="flex items-center justify-center gap-4">
-                        <div className="text-right flex-1">
-                          <p className="text-xl font-bold text-white">
-                            {f1.lastName.toUpperCase()}
-                          </p>
-                          <p className="text-sm text-kyokushin-text-muted">{f1.club}</p>
-                        </div>
-                        <span className="text-2xl font-black text-kyokushin-red">VS</span>
-                        <div className="text-left flex-1">
-                          <p className="text-xl font-bold text-white">
-                            {f2.lastName.toUpperCase()}
-                          </p>
-                          <p className="text-sm text-kyokushin-text-muted">{f2.club}</p>
-                        </div>
-                      </div>
-                    </div>
-                    {mat.current?.status === 'running' && (mat.current.timerEndsAt || mat.current.timerPausedRemaining) && (
-                      <OverviewMatTimer timerEndsAt={mat.current.timerEndsAt} timerPausedRemaining={mat.current.timerPausedRemaining} />
-                    )}
-                  </div>
+                  <OverviewMatFight
+                    mat={mat}
+                    f1={f1}
+                    f2={f2}
+                  />
+                ) : mat.lastCompleted ? (
+                  <OverviewMatResult match={mat.lastCompleted} participantMap={participantMap} />
                 ) : (
                   <div className="flex-1 flex items-center justify-center">
                     <p className="text-kyokushin-text-muted text-sm">
@@ -455,12 +666,16 @@ export default function LiveView() {
         matNumber={mat}
         currentMatch={matData?.current ?? null}
         nextMatch={matData?.next ?? null}
+        lastCompleted={matData?.lastCompleted ?? null}
         participantMap={participantMap}
         tournamentName={tournament.name}
         tournamentDate={tournament.date}
         completedOnMat={matData?.completed ?? 0}
         totalOnMat={matData?.total ?? 0}
-        categoryName={getCategoryForMatch(matData?.current ?? null)}
+        categoryName={getCategoryForMatch(matData?.current ?? null) ?? getCategoryForMatch(matData?.lastCompleted ?? null)}
+        fightGroupsData={fightGroups.data}
+        categoriesData={categories.data}
+        allMatches={matches.data}
       />
     );
   }

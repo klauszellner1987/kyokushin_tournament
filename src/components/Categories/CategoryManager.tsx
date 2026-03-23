@@ -4,6 +4,7 @@ import type { Category, Participant, TournamentFormat, TournamentType, BeltGrade
 import { BELT_GRADES, getAge } from '../../types';
 import { autoAssign } from '../../utils/groupAssignment';
 import CategoryReview from './CategoryReview';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 interface Props {
   tournamentId: string;
@@ -17,6 +18,7 @@ interface Props {
   participants: Participant[];
   onUpdateParticipant: (id: string, updates: Partial<Participant>) => Promise<void>;
   onConfirmRegistration: () => Promise<void>;
+  registrationConfirmed?: boolean;
 }
 
 const FORMAT_LABELS: Record<TournamentFormat, string> = {
@@ -94,13 +96,14 @@ const TEMPLATES: { label: string; categories: Omit<Category, 'id'>[] }[] = [
   },
 ];
 
-export default function CategoryManager({ tournamentType, categories, participants, onUpdateParticipant, onConfirmRegistration }: Props) {
+export default function CategoryManager({ tournamentType, categories, participants, onUpdateParticipant, onConfirmRegistration, registrationConfirmed }: Props) {
   const defaultDiscipline = tournamentType === 'kata' ? 'kata' : 'kumite';
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyCategory, discipline: defaultDiscipline as 'kumite' | 'kata' });
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [reviewMode, setReviewMode] = useState(false);
+  const [deleteCategoryId, setDeleteCategoryId] = useState<{ id: string; name: string } | null>(null);
 
   const filteredTemplates = TEMPLATES.filter((t) => {
     if (tournamentType === 'mixed') return true;
@@ -112,8 +115,8 @@ export default function CategoryManager({ tournamentType, categories, participan
 
   // Live auto-assignment: compute which participants belong to which category
   const { assignments, warnings } = useMemo(
-    () => autoAssign(participants, categories.data),
-    [participants, categories.data],
+    () => autoAssign(participants, categories.data, registrationConfirmed),
+    [participants, categories.data, registrationConfirmed],
   );
 
   const assignmentMap = useMemo(() => {
@@ -476,7 +479,7 @@ export default function CategoryManager({ tournamentType, categories, participan
                     <button onClick={() => handleEdit(c)} className="text-kyokushin-text-muted hover:text-kyokushin-gold p-1 transition-colors">
                       <Pencil size={14} />
                     </button>
-                    <button onClick={() => { if (confirm(`"${c.name}" wirklich löschen?`)) categories.remove(c.id); }} className="text-kyokushin-text-muted hover:text-kyokushin-red p-1 transition-colors">
+                    <button onClick={() => setDeleteCategoryId({ id: c.id, name: c.name })} className="text-kyokushin-text-muted hover:text-kyokushin-red p-1 transition-colors">
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -536,6 +539,12 @@ export default function CategoryManager({ tournamentType, categories, participan
                   </button>
                 )}
 
+                {assigned.length === 0 && registrationConfirmed && (
+                  <p className="text-xs text-kyokushin-text-muted mt-2 flex items-center gap-1">
+                    <AlertTriangle size={12} />
+                    Kein Kampf – keine Teilnehmer zugewiesen
+                  </p>
+                )}
                 {assigned.length === 1 && (
                   <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
                     <AlertTriangle size={12} />
@@ -641,6 +650,18 @@ export default function CategoryManager({ tournamentType, categories, participan
             {warnings.filter((w) => w.type === 'too_few' || w.type === 'single_participant').map((w) => w.message).join(' · ')}
           </p>
         </div>
+      )}
+
+      {deleteCategoryId && (
+        <ConfirmDialog
+          title="Kategorie löschen"
+          message={`"${deleteCategoryId.name}" wirklich löschen?`}
+          onConfirm={() => {
+            categories.remove(deleteCategoryId.id);
+            setDeleteCategoryId(null);
+          }}
+          onCancel={() => setDeleteCategoryId(null)}
+        />
       )}
     </div>
   );

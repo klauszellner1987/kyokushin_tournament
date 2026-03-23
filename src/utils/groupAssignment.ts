@@ -44,6 +44,7 @@ function matchesCategory(p: Participant, c: Category): boolean {
 export function autoAssign(
   participants: Participant[],
   categories: Category[],
+  registrationConfirmed = false,
 ): { assignments: AssignmentResult[]; warnings: AssignmentWarning[] } {
   const assignments: AssignmentResult[] = categories.map((c) => ({
     categoryId: c.id,
@@ -63,6 +64,10 @@ export function autoAssign(
           assigned.add(p.id);
         }
       }
+      continue;
+    }
+
+    if (registrationConfirmed) {
       continue;
     }
 

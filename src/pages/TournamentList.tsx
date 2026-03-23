@@ -7,6 +7,7 @@ import type { Tournament, TournamentType } from '../types';
 import { TOURNAMENT_TYPE_LABELS } from '../types';
 import DateInput, { parseDateDE } from '../components/ui/DateInput';
 import PricingCard from '../components/Payment/PricingCard';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 
 const statusLabels: Record<Tournament['status'], string> = {
   draft: 'Entwurf',
@@ -26,6 +27,7 @@ export default function TournamentList() {
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
+  const [deleteTournament, setDeleteTournament] = useState<{ id: string; name: string } | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     date: '',
@@ -272,14 +274,7 @@ export default function TournamentList() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (confirm('Turnier wirklich löschen?')) {
-                      const base = `tournaments/${t.id}`;
-                      localStore.removeCollection(`${base}/participants`);
-                      localStore.removeCollection(`${base}/categories`);
-                      localStore.removeCollection(`${base}/fightGroups`);
-                      localStore.removeCollection(`${base}/matches`);
-                      remove(t.id);
-                    }
+                    setDeleteTournament({ id: t.id, name: t.name });
                   }}
                   className="text-kyokushin-text-muted hover:text-kyokushin-red transition-colors"
                 >
@@ -292,6 +287,23 @@ export default function TournamentList() {
       )}
 
       {showPricing && <PricingCard onClose={() => setShowPricing(false)} />}
+
+      {deleteTournament && (
+        <ConfirmDialog
+          title="Turnier löschen"
+          message={`"${deleteTournament.name}" und alle zugehörigen Daten wirklich löschen?`}
+          onConfirm={() => {
+            const base = `tournaments/${deleteTournament.id}`;
+            localStore.removeCollection(`${base}/participants`);
+            localStore.removeCollection(`${base}/categories`);
+            localStore.removeCollection(`${base}/fightGroups`);
+            localStore.removeCollection(`${base}/matches`);
+            remove(deleteTournament.id);
+            setDeleteTournament(null);
+          }}
+          onCancel={() => setDeleteTournament(null)}
+        />
+      )}
     </div>
   );
 }

@@ -33,17 +33,19 @@ export function useAuth() {
   return ctx;
 }
 
-const DEV_SKIP_AUTH = import.meta.env.DEV && import.meta.env.VITE_SKIP_AUTH === 'true';
+const SKIP_AUTH =
+  (import.meta.env.DEV && import.meta.env.VITE_SKIP_AUTH === 'true') ||
+  import.meta.env.VITE_TESTING_MODE === 'true';
 
-const DEV_USER: LocalUser = { uid: 'dev_user', email: 'dev@local', displayName: 'Dev User' };
+const TEST_USER: LocalUser = { uid: 'test_user', email: 'tester@demo', displayName: 'Tester' };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | LocalUser | null>(DEV_SKIP_AUTH ? DEV_USER : null);
-  const [loading, setLoading] = useState(!DEV_SKIP_AUTH);
+  const [user, setUser] = useState<User | LocalUser | null>(SKIP_AUTH ? TEST_USER : null);
+  const [loading, setLoading] = useState(!SKIP_AUTH);
   const isLocalMode = !isFirebaseConfigured;
 
   useEffect(() => {
-    if (DEV_SKIP_AUTH) return;
+    if (SKIP_AUTH) return;
 
     if (auth) {
       const unsubscribe = onAuthStateChanged(auth, (u) => {
