@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Plus, Calendar, MapPin, Trash2, Play, CheckCircle, Swords, Grid3X3, Ticket } from 'lucide-react';
-import { useTournaments } from '../hooks/useFirestore';
+import { useTournaments, localStore } from '../hooks/useFirestore';
 import { useTokens } from '../hooks/useTokens';
 import type { Tournament, TournamentType } from '../types';
 import { TOURNAMENT_TYPE_LABELS } from '../types';
@@ -272,7 +272,14 @@ export default function TournamentList() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (confirm('Turnier wirklich löschen?')) remove(t.id);
+                    if (confirm('Turnier wirklich löschen?')) {
+                      const base = `tournaments/${t.id}`;
+                      localStore.removeCollection(`${base}/participants`);
+                      localStore.removeCollection(`${base}/categories`);
+                      localStore.removeCollection(`${base}/fightGroups`);
+                      localStore.removeCollection(`${base}/matches`);
+                      remove(t.id);
+                    }
                   }}
                   className="text-kyokushin-text-muted hover:text-kyokushin-red transition-colors"
                 >

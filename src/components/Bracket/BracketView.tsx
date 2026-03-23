@@ -2,8 +2,9 @@ import { useState, useMemo } from 'react';
 import { Play, AlertTriangle, Trophy, ArrowLeft, Users, CheckCircle, Clock, Circle, Medal, Scale } from 'lucide-react';
 import type { Category, FightGroup, Match, Participant } from '../../types';
 import { autoAssign } from '../../utils/groupAssignment';
-import { generateSingleElimination, generateRoundRobin, advanceWinner, getRoundLabel } from '../../utils/bracketGenerator';
+import { generateSingleElimination, generateRoundRobin, advanceWinner } from '../../utils/bracketGenerator';
 import { distributeCategoriesToMats, scheduleMatchesToMats } from '../../utils/matScheduler';
+import BracketTree from './BracketTree';
 
 interface Props {
   tournamentId: string;
@@ -22,6 +23,7 @@ interface Props {
   };
   participants: Participant[];
   matCount: number;
+  registrationConfirmed: boolean;
 }
 
 const FORMAT_LABELS: Record<string, string> = {
@@ -46,6 +48,7 @@ export default function BracketView({
   matches,
   participants,
   matCount,
+  registrationConfirmed,
 }: Props) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [resultModal, setResultModal] = useState<Match | null>(null);
@@ -79,7 +82,7 @@ export default function BracketView({
     if (!id) return false;
     const p = participantMap.get(id);
     const s = p?.status ?? 'active';
-    return s === 'withdrawn' || s === 'injured';
+    return s === 'withdrawn' || s === 'injured' || s === 'disqualified';
   };
 
   const getMatchesForCategory = (categoryId: string) => {
@@ -93,14 +96,14 @@ export default function BracketView({
       const assignment = assignments.find((a) => a.categoryId === cat.id);
       const catMatches = getMatchesForCategory(cat.id);
       const realMatches = catMatches.filter((m) => m.status !== 'bye');
-      const completed = realMatches.filter((m) => m.status === 'completed' || m.status === 'walkover');
+      const completed = realMatches.filter((m) => m.status === 'completed' || m.status === 'walkover' || m.status === 'disqualification');
       const hasResults = completed.length > 0;
 
       let status: CategoryStats['status'] = 'empty';
       let championName: string | null = null;
 
       if (catMatches.length > 0) {
-        const allDone = realMatches.length > 0 && realMatches.every((m) => m.status === 'completed' || m.status === 'walkover');
+        const allDone = realMatches.length > 0 && realMatches.every((m) => m.status === 'completed' || m.status === 'walkover' || m.status === 'disqualification');
         if (allDone) {
           status = 'completed';
           if (cat.tournamentFormat === 'round_robin' && (cat.kataSystem ?? 'points') !== 'flag') {
@@ -165,7 +168,7 @@ export default function BracketView({
     const statsMap = new Map<string, { wins: number; losses: number; pointsFor: number; pointsAgainst: number }>();
 
     for (const m of matchesForCategory) {
-      if (m.status !== 'completed' && m.status !== 'walkover') continue;
+      if (m.status !== 'completed' && m.status !== 'walkover' && m.status !== 'disqualification') continue;
 
       for (const fId of [m.fighter1Id, m.fighter2Id]) {
         if (fId && !statsMap.has(fId)) {
@@ -476,13 +479,25 @@ export default function BracketView({
 
         <button
           onClick={handleGenerateRequest}
-          disabled={!category || detailParticipantCount < 2}
+          disabled={!category || detailParticipantCount < 2 || !registrationConfirmed}
           className="flex items-center gap-2 bg-kyokushin-red hover:bg-kyokushin-red-dark disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
         >
           <Play size={16} />
           Turnierbaum generieren
         </button>
       </div>
+
+      {!registrationConfirmed && (
+        <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-amber-400 font-medium">Registrierung noch nicht abgeschlossen</p>
+            <p className="text-sm text-kyokushin-text-muted mt-1">
+              Bitte zuerst im Kategorien-Tab die Sichtkontrolle durchführen und bestätigen, bevor Turnierbäume generiert werden können.
+            </p>
+          </div>
+        </div>
+      )}
 
       {generateError && (
         <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
@@ -504,11 +519,13 @@ export default function BracketView({
             Kein Turnierbaum vorhanden
           </h3>
           <p className="text-kyokushin-text-muted mb-6">
-            {detailParticipantCount < 2
-              ? `Nur ${detailParticipantCount} Teilnehmer in dieser Kategorie. Mindestens 2 benötigt.`
-              : `${detailParticipantCount} Teilnehmer bereit. Klicke auf "Turnierbaum generieren".`}
+            {!registrationConfirmed
+              ? 'Bitte zuerst die Sichtkontrolle im Kategorien-Tab abschließen.'
+              : detailParticipantCount < 2
+                ? `Nur ${detailParticipantCount} Teilnehmer in dieser Kategorie. Mindestens 2 benötigt.`
+                : `${detailParticipantCount} Teilnehmer bereit. Klicke auf "Turnierbaum generieren".`}
           </p>
-          {detailParticipantCount >= 2 && (
+          {detailParticipantCount >= 2 && registrationConfirmed && (
             <button
               onClick={handleGenerateRequest}
               className="inline-flex items-center gap-2 bg-kyokushin-red hover:bg-kyokushin-red-dark text-white px-6 py-3 rounded-lg font-medium transition-colors"
@@ -538,7 +555,7 @@ export default function BracketView({
                   .map((m) => (
                     <tr
                       key={m.id}
-                      className={`border-b border-kyokushin-border/50 hover:bg-kyokushin-card-hover ${m.status === 'walkover' ? 'bg-amber-500/5' : ''}`}
+                      className={`border-b border-kyokushin-border/50 hover:bg-kyokushin-card-hover ${m.status === 'walkover' ? 'bg-amber-500/5' : m.status === 'disqualification' ? 'bg-red-500/5' : ''}`}
                     >
                       <td className="px-4 py-3 text-kyokushin-text-muted">{m.round}</td>
                       <td className={`px-4 py-3 ${m.winnerId === m.fighter1Id ? 'text-kyokushin-gold font-bold' : 'text-white'}`}>
@@ -555,7 +572,9 @@ export default function BracketView({
                       <td className="px-4 py-3 text-center text-white">
                         {m.status === 'walkover'
                           ? <span className="text-amber-400 font-medium">W.O.</span>
-                          : m.status === 'completed' ? `${m.score1} : ${m.score2}` : '-'}
+                          : m.status === 'disqualification'
+                            ? <span className="text-red-400 font-medium">DSQ</span>
+                            : m.status === 'completed' ? `${m.score1} : ${m.score2}` : '-'}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -573,7 +592,7 @@ export default function BracketView({
                               <Scale size={12} />
                             </button>
                           )}
-                          {m.status !== 'completed' && m.status !== 'walkover' && m.fighter1Id && m.fighter2Id && (
+                          {m.status !== 'completed' && m.status !== 'walkover' && m.status !== 'disqualification' && m.fighter1Id && m.fighter2Id && (
                             <button
                               onClick={() => { setResultModal(m); setScore1(0); setScore2(0); }}
                               className="text-kyokushin-red hover:text-kyokushin-gold text-xs font-medium transition-colors"
@@ -605,7 +624,7 @@ export default function BracketView({
 
           {roundRobinRanking.length > 0 && (() => {
             const realMatches = matchesForCategory.filter((m) => m.status !== 'bye');
-            const allDone = realMatches.length > 0 && realMatches.every((m) => m.status === 'completed' || m.status === 'walkover');
+            const allDone = realMatches.length > 0 && realMatches.every((m) => m.status === 'completed' || m.status === 'walkover' || m.status === 'disqualification');
             const podium = roundRobinRanking.slice(0, 3);
             const podiumColors = [
               { border: 'border-kyokushin-gold', bg: 'bg-kyokushin-gold/10', text: 'text-kyokushin-gold', label: '1. Platz' },
@@ -698,123 +717,18 @@ export default function BracketView({
           })()}
         </div>
       ) : (
-        <div className="overflow-x-auto pb-4">
-          <div className="flex gap-8 min-w-max">
-            {Array.from(rounds.entries())
-              .sort(([a], [b]) => a - b)
-              .map(([round, roundMatches]) => (
-                <div key={round} className="flex flex-col">
-                  <h4 className="text-sm font-medium text-kyokushin-text-muted mb-4 text-center">
-                    {getRoundLabel(round, totalRounds)}
-                  </h4>
-                  <div
-                    className="flex flex-col justify-around flex-1 gap-4"
-                    style={{ minHeight: `${roundMatches.length * 100}px` }}
-                  >
-                    {roundMatches
-                      .sort((a, b) => a.position - b.position)
-                      .map((m) => {
-                        const isWalkover = m.status === 'walkover';
-                        return (
-                        <div
-                          key={m.id}
-                          className={`bg-kyokushin-card border rounded-lg w-72 overflow-hidden cursor-pointer transition-all ${
-                            isWalkover
-                              ? 'border-amber-500/50'
-                              : m.status === 'completed'
-                                ? 'border-kyokushin-border'
-                                : m.fighter1Id && m.fighter2Id
-                                  ? 'border-kyokushin-red shadow-lg shadow-kyokushin-red/10'
-                                  : 'border-kyokushin-border/50'
-                          }`}
-                          onClick={() => {
-                            if (m.status !== 'completed' && m.status !== 'walkover' && m.fighter1Id && m.fighter2Id) {
-                              setResultModal(m);
-                              setScore1(0);
-                              setScore2(0);
-                            }
-                          }}
-                        >
-                          <div
-                            className={`flex items-center justify-between px-3 py-2 border-b border-kyokushin-border/30 ${
-                              m.winnerId === m.fighter1Id ? 'bg-kyokushin-red/20 border-l-2 border-l-kyokushin-gold' : ''
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              {m.winnerId === m.fighter1Id && <Trophy size={12} className="text-kyokushin-gold shrink-0" />}
-                              <span className={`text-sm text-white ${isWithdrawn(m.fighter1Id) ? 'line-through opacity-60' : ''}`}>
-                                {getName(m.fighter1Id)}
-                              </span>
-                            </div>
-                            <span className="text-xs text-kyokushin-text-muted ml-2 shrink-0">
-                              {isWalkover
-                                ? (m.winnerId === m.fighter1Id ? '' : <span className="text-amber-400">W.O.</span>)
-                                : m.status === 'completed' ? m.score1 : getClub(m.fighter1Id)}
-                            </span>
-                          </div>
-                          <div
-                            className={`flex items-center justify-between px-3 py-2 ${
-                              m.winnerId === m.fighter2Id ? 'bg-kyokushin-red/20 border-l-2 border-l-kyokushin-gold' : ''
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              {m.winnerId === m.fighter2Id && <Trophy size={12} className="text-kyokushin-gold shrink-0" />}
-                              <span className={`text-sm text-white ${isWithdrawn(m.fighter2Id) ? 'line-through opacity-60' : ''}`}>
-                                {getName(m.fighter2Id)}
-                              </span>
-                            </div>
-                            <span className="text-xs text-kyokushin-text-muted ml-2 shrink-0">
-                              {isWalkover
-                                ? (m.winnerId === m.fighter2Id ? '' : <span className="text-amber-400">W.O.</span>)
-                                : m.status === 'completed' ? m.score2 : getClub(m.fighter2Id)}
-                            </span>
-                          </div>
-                          {(m.weightDifference || weightEditMatch === m.id) && m.fighter1Id && m.fighter2Id && (
-                            <div className="flex items-center justify-between px-3 py-1 border-t border-kyokushin-border/30 bg-kyokushin-bg/50" onClick={(e) => e.stopPropagation()}>
-                              {weightEditMatch === m.id ? (
-                                <div className="flex items-center gap-1 w-full">
-                                  <Scale size={10} className="text-kyokushin-text-muted shrink-0" />
-                                  <input type="number" step="0.1" min="0" value={weightValue} onChange={(e) => setWeightValue(e.target.value)} placeholder="kg" className="flex-1 bg-transparent border-b border-kyokushin-border text-white text-xs px-1 py-0.5 focus:outline-none focus:border-kyokushin-red" />
-                                  <button onClick={() => handleWeightSave(m.id)} className="text-green-400 text-xs font-medium">OK</button>
-                                </div>
-                              ) : (
-                                <button onClick={() => { setWeightEditMatch(m.id); setWeightValue(m.weightDifference?.toString() ?? ''); }} className="flex items-center gap-1 text-[10px] text-kyokushin-text-muted hover:text-white w-full">
-                                  <Scale size={10} />
-                                  <span>+{m.weightDifference} kg</span>
-                                </button>
-                              )}
-                            </div>
-                          )}
-                          {!m.weightDifference && weightEditMatch !== m.id && m.fighter1Id && m.fighter2Id && (
-                            <div className="flex justify-end px-2 py-0.5 border-t border-kyokushin-border/20" onClick={(e) => e.stopPropagation()}>
-                              <button onClick={() => { setWeightEditMatch(m.id); setWeightValue(''); }} className="text-kyokushin-text-muted hover:text-white transition-colors p-0.5" title="Gewichtsunterschied eintragen">
-                                <Scale size={10} />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        );
-                      })}
-                  </div>
-                </div>
-              ))}
-
-            {totalRounds > 0 && (
-              <div className="flex flex-col justify-center">
-                <div className="bg-kyokushin-card border border-kyokushin-gold rounded-lg w-48 p-4 text-center">
-                  <Trophy size={24} className="mx-auto text-kyokushin-gold mb-2" />
-                  <p className="text-xs text-kyokushin-text-muted mb-1">Champion</p>
-                  <p className="text-lg font-bold text-kyokushin-gold">
-                    {(() => {
-                      const finalMatch = matchesForCategory.find((m) => m.round === totalRounds);
-                      return finalMatch?.winnerId ? getName(finalMatch.winnerId) : 'Noch offen';
-                    })()}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <BracketTree
+          matches={matchesForCategory}
+          totalRounds={totalRounds}
+          getName={getName}
+          getClub={getClub}
+          isWithdrawn={isWithdrawn}
+          onMatchClick={(m) => {
+            setResultModal(m);
+            setScore1(0);
+            setScore2(0);
+          }}
+        />
       )}
 
       {/* Result Modal */}

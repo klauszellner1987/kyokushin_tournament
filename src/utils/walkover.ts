@@ -15,7 +15,7 @@ export interface MatchUpdate {
 export function computeWalkoverUpdates(
   participantId: string,
   allMatches: Match[],
-  fightGroups: FightGroup[],
+  _fightGroups: FightGroup[],
 ): MatchUpdate[] {
   const updates: MatchUpdate[] = [];
 
@@ -24,7 +24,8 @@ export function computeWalkoverUpdates(
       (m.fighter1Id === participantId || m.fighter2Id === participantId) &&
       m.status !== 'completed' &&
       m.status !== 'bye' &&
-      m.status !== 'walkover',
+      m.status !== 'walkover' &&
+      m.status !== 'disqualification',
   );
 
   const updatedMatchesMap = new Map<string, Match>();

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../firebase';
 import { useCollection, localStore } from './useFirestore';
 import type { Tournament, Participant, Category, FightGroup, Match } from '../types';
@@ -60,9 +60,23 @@ export function useTournamentData(tournamentId: string | undefined) {
     basePath ? `${basePath}/matches` : '',
   );
 
+  const updateTournament = useCallback(
+    async (updates: Partial<Omit<Tournament, 'id'>>) => {
+      if (!tournamentId) return;
+      if (isFirebaseConfigured) {
+        const docRef = doc(db, 'tournaments', tournamentId);
+        await updateDoc(docRef, updates);
+      } else {
+        localStore.update('tournaments', tournamentId, updates as Record<string, unknown>);
+      }
+    },
+    [tournamentId],
+  );
+
   return {
     tournament,
     tournamentLoading,
+    updateTournament,
     participants,
     categories,
     fightGroups,

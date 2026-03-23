@@ -13,7 +13,7 @@ import {
 } from '@dnd-kit/core';
 import { useDroppable } from '@dnd-kit/core';
 import { useDraggable } from '@dnd-kit/core';
-import { Check, X, RotateCcw, GripVertical, ArrowLeftRight, Users } from 'lucide-react';
+import { Check, X, RotateCcw, GripVertical, ArrowLeftRight, Users, AlertTriangle } from 'lucide-react';
 import type { Category, Participant } from '../../types';
 import { getAge } from '../../types';
 import { autoAssign } from '../../utils/groupAssignment';
@@ -281,6 +281,9 @@ export default function CategoryReview({ categories, participants, onSave, onClo
 
   const activeParticipant = activeId ? participantMap.get(activeId) : null;
 
+  const invalidCategories = categories.filter((c) => (draft[c.id] ?? []).length === 1);
+  const allCategoriesValid = invalidCategories.length === 0;
+
   const columnOrder = [
     ...categories.map((c) => c.id),
     UNASSIGNED_ID,
@@ -319,14 +322,30 @@ export default function CategoryReview({ categories, participants, onSave, onClo
           </button>
           <button
             onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-colors bg-kyokushin-red hover:bg-kyokushin-red-dark text-white disabled:opacity-60"
+            disabled={saving || !allCategoriesValid}
+            title={!allCategoriesValid ? 'Alle Kategorien müssen 0 oder mindestens 2 Teilnehmer haben' : undefined}
+            className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-colors bg-kyokushin-red hover:bg-kyokushin-red-dark text-white disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <Check size={14} />
             {saving ? 'Speichert...' : 'Bestätigen'}
           </button>
         </div>
       </div>
+
+      {!allCategoriesValid && (
+        <div className="mx-6 mt-4 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-amber-400 font-medium">
+              {invalidCategories.length === 1 ? '1 Kategorie' : `${invalidCategories.length} Kategorien`} mit nur 1 Teilnehmer
+            </p>
+            <p className="text-sm text-kyokushin-text-muted mt-1">
+              Verschiebe den Teilnehmer in eine andere Kategorie oder in "Kein Kampf", damit bestätigt werden kann.
+              Betroffene: {invalidCategories.map((c) => c.name).join(', ')}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Columns */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-6">
@@ -341,7 +360,7 @@ export default function CategoryReview({ categories, participants, onSave, onClo
             {columnOrder.map((colId) => {
               const isUnassigned = colId === UNASSIGNED_ID;
               const category = categories.find((c) => c.id === colId);
-              const title = isUnassigned ? 'Nicht zugeordnet' : (category?.name ?? '');
+              const title = isUnassigned ? 'Kein Kampf' : (category?.name ?? '');
               const pids = draft[colId] ?? [];
 
               return (

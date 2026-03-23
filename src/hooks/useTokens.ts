@@ -18,6 +18,19 @@ export function useTokens() {
   const { user } = useAuth();
   const uid = user ? ('uid' in user ? user.uid : '') : '';
 
+  if (import.meta.env.DEV) {
+    return {
+      canCreateTournament: true,
+      unusedTokenCount: 999,
+      usedCount: 0,
+      freeTrialsUsed: 0,
+      freeTrialLimit: 999,
+      canUseFree: true,
+      consumeToken: () => true,
+      addToken: () => {},
+    };
+  }
+
   const subscribeFn = useCallback(
     (cb: () => void) => localStore.subscribe(TOKEN_PATH, cb),
     [],

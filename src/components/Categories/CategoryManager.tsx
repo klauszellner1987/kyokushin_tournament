@@ -16,6 +16,7 @@ interface Props {
   };
   participants: Participant[];
   onUpdateParticipant: (id: string, updates: Partial<Participant>) => Promise<void>;
+  onConfirmRegistration: () => Promise<void>;
 }
 
 const FORMAT_LABELS: Record<TournamentFormat, string> = {
@@ -93,7 +94,7 @@ const TEMPLATES: { label: string; categories: Omit<Category, 'id'>[] }[] = [
   },
 ];
 
-export default function CategoryManager({ tournamentType, categories, participants, onUpdateParticipant }: Props) {
+export default function CategoryManager({ tournamentType, categories, participants, onUpdateParticipant, onConfirmRegistration }: Props) {
   const defaultDiscipline = tournamentType === 'kata' ? 'kata' : 'kumite';
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -198,6 +199,7 @@ export default function CategoryManager({ tournamentType, categories, participan
     for (const [participantId, categoryIds] of updates) {
       await onUpdateParticipant(participantId, { categoryIds });
     }
+    await onConfirmRegistration();
   };
 
   const renderCategoryForm = () => (
@@ -425,17 +427,19 @@ export default function CategoryManager({ tournamentType, categories, participan
               Auto-Kategorien
             </button>
           )}
-          <button
-            onClick={() => {
-              setShowForm(!showForm);
-              setEditId(null);
-              setForm(emptyCategory);
-            }}
-            className="flex items-center gap-2 bg-kyokushin-red hover:bg-kyokushin-red-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            <Plus size={16} />
-            Neue Kategorie
-          </button>
+          {participants.length > 0 && (
+            <button
+              onClick={() => {
+                setShowForm(!showForm);
+                setEditId(null);
+                setForm(emptyCategory);
+              }}
+              className="flex items-center gap-2 bg-kyokushin-red hover:bg-kyokushin-red-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Plus size={16} />
+              Neue Kategorie
+            </button>
+          )}
         </div>
       </div>
 

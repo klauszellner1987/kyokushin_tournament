@@ -15,9 +15,10 @@ export interface Tournament {
   type: TournamentType;
   matCount: number;
   createdAt: number;
+  registrationConfirmed?: boolean;
 }
 
-export type ParticipantStatus = 'active' | 'withdrawn' | 'injured';
+export type ParticipantStatus = 'active' | 'withdrawn' | 'injured' | 'disqualified';
 
 export interface Participant {
   id: string;
@@ -101,7 +102,7 @@ export interface FightGroup {
   status: 'pending' | 'running' | 'completed';
 }
 
-export type MatchStatus = 'pending' | 'running' | 'completed' | 'bye' | 'walkover';
+export type MatchStatus = 'pending' | 'running' | 'completed' | 'bye' | 'walkover' | 'disqualification';
 
 export interface Match {
   id: string;
@@ -117,6 +118,9 @@ export interface Match {
   matNumber: number;
   scheduledOrder: number;
   weightDifference?: number;
+  timerEndsAt?: number;
+  timerPausedRemaining?: number;
+  isExtension?: boolean;
 }
 
 export function getAge(birthDate: string): number {

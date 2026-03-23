@@ -25,9 +25,51 @@ class PersistentStore {
   private nextIds = new Map<string, number>();
   private ready = false;
   private readyListeners = new Set<Listener>();
+  private channel: BroadcastChannel | null = null;
 
   constructor() {
     this.hydrate();
+    try {
+      this.channel = new BroadcastChannel('tournament-store');
+      this.channel.onmessage = (event) => {
+        const { type, path, id, updates, item } = event.data;
+        if (type === 'update') {
+          const current = this.cache.get(path) ?? [];
+          this.cache.set(
+            path,
+            current.map((row) => {
+              if (row.id !== id) return row;
+              const merged = { ...row, ...updates };
+              for (const key of Object.keys(updates)) {
+                if (updates[key] === undefined) delete merged[key];
+              }
+              return merged;
+            }),
+          );
+          this.notify(path);
+        } else if (type === 'add') {
+          const current = this.cache.get(path) ?? [];
+          if (!current.some((r) => r.id === item.id)) {
+            this.cache.set(path, [...current, item]);
+            const idNum = parseInt(item.id.replace('local_', ''), 10);
+            if (!isNaN(idNum)) {
+              const prev = this.nextIds.get(path) ?? 0;
+              if (idNum > prev) this.nextIds.set(path, idNum);
+            }
+            this.notify(path);
+          }
+        } else if (type === 'remove') {
+          const current = this.cache.get(path) ?? [];
+          this.cache.set(path, current.filter((r) => r.id !== id));
+          this.notify(path);
+        } else if (type === 'removeCollection') {
+          this.cache.set(path, []);
+          this.notify(path);
+        }
+      };
+    } catch {
+      // BroadcastChannel not available
+    }
   }
 
   private async hydrate(): Promise<void> {
@@ -85,21 +127,40 @@ class PersistentStore {
     this.cache.set(path, [...current, row]);
     this.notify(path);
 
+    this.channel?.postMessage({ type: 'add', path, item: row });
+
     idb.documents.add({ _collection: path, ...row } as never).catch(() => {});
     return id;
   }
 
   update(path: string, id: string, updates: Record<string, unknown>): void {
+    const undefinedKeys = Object.keys(updates).filter((k) => updates[k] === undefined);
+
     const current = this.cache.get(path) ?? [];
     this.cache.set(
       path,
-      current.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+      current.map((item) => {
+        if (item.id !== id) return item;
+        const merged = { ...item, ...updates };
+        for (const k of undefinedKeys) delete merged[k];
+        return merged;
+      }),
     );
     this.notify(path);
 
+    this.channel?.postMessage({ type: 'update', path, id, updates });
+
     idb.documents
       .where({ _collection: path, id })
-      .modify(updates)
+      .modify((record: Record<string, unknown>) => {
+        for (const [k, v] of Object.entries(updates)) {
+          if (v === undefined) {
+            delete record[k];
+          } else {
+            record[k] = v;
+          }
+        }
+      })
       .catch(() => {});
   }
 
@@ -108,8 +169,23 @@ class PersistentStore {
     this.cache.set(path, current.filter((item) => item.id !== id));
     this.notify(path);
 
+    this.channel?.postMessage({ type: 'remove', path, id });
+
     idb.documents
       .where({ _collection: path, id })
+      .delete()
+      .catch(() => {});
+  }
+
+  removeCollection(path: string): void {
+    this.cache.set(path, []);
+    this.notify(path);
+
+    this.channel?.postMessage({ type: 'removeCollection', path });
+
+    idb.documents
+      .where('_collection')
+      .equals(path)
       .delete()
       .catch(() => {});
   }

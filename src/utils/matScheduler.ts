@@ -88,21 +88,24 @@ export function getNextMatchForMat(
   matches: Match[],
   matNumber: number,
 ): Match | null {
-  return (
-    matches
-      .filter(
-        (m) =>
-          m.matNumber === matNumber &&
-          m.status === 'pending' &&
-          m.fighter1Id &&
-          m.fighter2Id,
-      )
-      .sort((a, b) => a.scheduledOrder - b.scheduledOrder)[0] ?? null
+  const matMatches = matches.filter(
+    (m) => m.matNumber === matNumber && m.fighter1Id && m.fighter2Id,
   );
+  const running = matMatches.find((m) => m.status === 'running');
+  if (running) {
+    return matMatches
+      .filter((m) => m.status === 'pending')
+      .sort((a, b) => a.scheduledOrder - b.scheduledOrder)[0] ?? null;
+  }
+  const pending = matMatches
+    .filter((m) => m.status === 'pending')
+    .sort((a, b) => a.scheduledOrder - b.scheduledOrder);
+  return pending[0] ?? null;
 }
 
 /**
  * Gets current + next match for all mats.
+ * Running matches take priority over pending ones as "current".
  */
 export function getMatOverview(
   matches: Match[],
@@ -111,15 +114,22 @@ export function getMatOverview(
   return Array.from({ length: matCount }, (_, i) => {
     const matNumber = i + 1;
     const matMatches = matches.filter((m) => m.matNumber === matNumber);
+
+    const runningMatch = matMatches.find(
+      (m) => m.status === 'running' && m.fighter1Id && m.fighter2Id,
+    );
     const pendingReady = matMatches
       .filter((m) => m.status === 'pending' && m.fighter1Id && m.fighter2Id)
       .sort((a, b) => a.scheduledOrder - b.scheduledOrder);
 
+    const current = runningMatch ?? pendingReady[0] ?? null;
+    const next = runningMatch ? pendingReady[0] : pendingReady[1];
+
     return {
       matNumber,
-      current: pendingReady[0] ?? null,
-      next: pendingReady[1] ?? null,
-      completed: matMatches.filter((m) => m.status === 'completed' || m.status === 'bye').length,
+      current,
+      next: next ?? null,
+      completed: matMatches.filter((m) => m.status === 'completed' || m.status === 'bye' || m.status === 'walkover' || m.status === 'disqualification').length,
       total: matMatches.length,
     };
   });

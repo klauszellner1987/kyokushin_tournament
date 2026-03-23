@@ -1,28 +1,34 @@
 import { useParams, Link } from 'react-router';
-import { Users, FolderTree, Swords, Monitor, ArrowLeft, Grid3X3 } from 'lucide-react';
+import { Users, FolderTree, Swords, Monitor, ArrowLeft, Grid3X3, Radio } from 'lucide-react';
 import { useTournamentData } from '../hooks/useTournament';
 import { TOURNAMENT_TYPE_LABELS } from '../types';
 import type { ParticipantStatus } from '../types';
 import ParticipantManager from '../components/Registration/ParticipantManager';
 import CategoryManager from '../components/Categories/CategoryManager';
 import BracketView from '../components/Bracket/BracketView';
+import FightControl from '../components/FightControl/FightControl';
 import { computeWalkoverUpdates } from '../utils/walkover';
 import { useState, useCallback } from 'react';
 
-type Tab = 'participants' | 'categories' | 'bracket' | 'live';
+type Tab = 'participants' | 'categories' | 'bracket' | 'control' | 'live';
 
 const tabs: { key: Tab; label: string; icon: typeof Users }[] = [
   { key: 'participants', label: 'Teilnehmer', icon: Users },
   { key: 'categories', label: 'Kategorien', icon: FolderTree },
   { key: 'bracket', label: 'Turnierbaum', icon: Swords },
+  { key: 'control', label: 'Kampfleitung', icon: Radio },
   { key: 'live', label: 'Live', icon: Monitor },
 ];
 
 export default function TournamentDetail() {
   const { id } = useParams<{ id: string }>();
-  const { tournament, tournamentLoading, participants, categories, fightGroups, matches } =
+  const { tournament, tournamentLoading, updateTournament, participants, categories, fightGroups, matches } =
     useTournamentData(id);
   const [activeTab, setActiveTab] = useState<Tab>('participants');
+
+  const confirmRegistration = useCallback(async () => {
+    await updateTournament({ registrationConfirmed: true });
+  }, [updateTournament]);
 
   const withdrawParticipant = useCallback(async (participantId: string, status: ParticipantStatus) => {
     await participants.update(participantId, { status });
@@ -143,6 +149,7 @@ export default function TournamentDetail() {
           categories={categories}
           participants={participants.data}
           onUpdateParticipant={participants.update}
+          onConfirmRegistration={confirmRegistration}
         />
       )}
       {activeTab === 'bracket' && (
@@ -153,6 +160,17 @@ export default function TournamentDetail() {
           matches={matches}
           participants={participants.data}
           matCount={tournament.matCount}
+          registrationConfirmed={tournament.registrationConfirmed ?? false}
+        />
+      )}
+      {activeTab === 'control' && (
+        <FightControl
+          categories={categories.data}
+          fightGroups={fightGroups}
+          matches={matches}
+          participants={participants.data}
+          matCount={tournament.matCount ?? 1}
+          onDisqualify={(participantId) => withdrawParticipant(participantId, 'disqualified')}
         />
       )}
       {activeTab === 'live' && (

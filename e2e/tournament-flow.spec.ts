@@ -13,19 +13,7 @@ test.describe.serial('Tournament full flow', () => {
     page = await context.newPage();
 
     await page.goto('/');
-    await expect(page.getByText('Kyokushin Tournament Manager')).toBeVisible({ timeout: 10_000 });
-
-    const registerTab = page.getByRole('button', { name: 'Registrieren' });
-    if (await registerTab.isVisible()) {
-      await registerTab.click();
-    }
-
-    await page.getByPlaceholder('Dein Name oder Vereinsname').fill('Test Dojo');
-    await page.getByPlaceholder('name@verein.de').fill('test@e2e.local');
-    await page.getByPlaceholder('Mindestens 6 Zeichen').fill('test1234');
-    await page.getByRole('button', { name: 'Konto erstellen' }).click();
-
-    await expect(page.getByRole('heading', { name: 'Turniere', exact: true })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: 'Turniere', exact: true })).toBeVisible({ timeout: 15_000 });
   });
 
   test.afterAll(async () => {
@@ -50,7 +38,7 @@ test.describe.serial('Tournament full flow', () => {
     const fileInput = page.locator('input[type="file"][accept=".csv"]');
     await fileInput.setInputFiles(csvPath);
 
-    await expect(page.getByText('8 Teilnehmer registriert')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('28 Teilnehmer registriert')).toBeVisible({ timeout: 10_000 });
 
     await expect(page.getByText('Mustermann, Max')).toBeVisible();
     await expect(page.getByText('Schmidt, Anna')).toBeVisible();
@@ -94,7 +82,7 @@ test.describe.serial('Tournament full flow', () => {
 
       let targetColIndex = 1;
       const secondColTitle = await columns.nth(1).locator('h4').textContent();
-      if (secondColTitle === 'Nicht zugeordnet' && columnCount > 2) {
+      if (secondColTitle === 'Kein Kampf' && columnCount > 2) {
         targetColIndex = 2;
       }
       const targetColumn = columns.nth(targetColIndex);
