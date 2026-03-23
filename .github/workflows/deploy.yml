@@ -27,7 +27,17 @@ jobs:
 
       - run: npm ci --legacy-peer-deps
 
-      - run: npx vite build
+      - name: Build
+        run: |
+          npx vite build 2>&1 | tee /tmp/build.log
+          EXIT_CODE=${PIPESTATUS[0]}
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo '### Build Failed' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -80 /tmp/build.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit $EXIT_CODE
+          fi
         env:
           GITHUB_PAGES: "true"
           VITE_TESTING_MODE: "true"
