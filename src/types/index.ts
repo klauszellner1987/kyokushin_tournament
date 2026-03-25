@@ -72,7 +72,7 @@ export const BELT_COLORS: Record<string, string> = {
   '10. Dan': '#1a1a1a',
 };
 
-export type TournamentFormat = 'single_elimination' | 'double_elimination' | 'round_robin' | 'group_then_knockout';
+export type TournamentFormat = 'single_elimination' | 'round_robin';
 
 export type KataSystem = 'flag' | 'points';
 
@@ -91,7 +91,10 @@ export interface Category {
   fightDuration1?: number;
   fightDuration2?: number;
   boardBreaking?: boolean;
-  weightDecision?: boolean;
+  enableWeightDecision?: boolean;
+  weightDecisionThreshold?: number;
+  fightDuration3?: number;
+  roundsConfigured?: boolean;
   kataSystem?: KataSystem;
 }
 
@@ -121,6 +124,7 @@ export interface Match {
   timerEndsAt?: number;
   timerPausedRemaining?: number;
   isExtension?: boolean;
+  fightRound?: number;
 }
 
 export function getAge(birthDate: string): number {

@@ -24,12 +24,23 @@ export function generateSingleElimination(
   const totalRounds = Math.log2(bracketSize);
   const matches: Omit<Match, 'id'>[] = [];
 
-  // First round with byes
+  // Distribute fighters across slots so that each match has at most one bye.
+  // Phase 1: one fighter per match (fills fighter1 of each match).
+  // Phase 2: remaining fighters fill fighter2 slots from the top.
+  // This guarantees no "double bye" (null vs null) matches.
   const firstRoundMatches = bracketSize / 2;
-  for (let i = 0; i < firstRoundMatches; i++) {
-    const f1 = shuffled[i * 2] ?? null;
-    const f2 = shuffled[i * 2 + 1] ?? null;
+  const slots: (string | null)[] = new Array(bracketSize).fill(null);
+  for (let i = 0; i < shuffled.length; i++) {
+    if (i < firstRoundMatches) {
+      slots[i * 2] = shuffled[i];
+    } else {
+      slots[(i - firstRoundMatches) * 2 + 1] = shuffled[i];
+    }
+  }
 
+  for (let i = 0; i < firstRoundMatches; i++) {
+    const f1 = slots[i * 2];
+    const f2 = slots[i * 2 + 1];
     const isBye = f1 === null || f2 === null;
 
     matches.push({

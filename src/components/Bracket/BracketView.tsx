@@ -26,12 +26,12 @@ interface Props {
   registrationConfirmed: boolean;
 }
 
-const FORMAT_LABELS: Record<string, string> = {
-  single_elimination: 'Single Elimination',
-  double_elimination: 'Double Elimination',
-  round_robin: 'Round Robin',
-  group_then_knockout: 'Gruppenphase + K.O.',
-};
+function getFormatLabel(cat: Category): string {
+  if (cat.discipline === 'kata') {
+    return (cat.kataSystem ?? 'points') === 'flag' ? 'K.O. (Flagge)' : 'Round Robin (Punkte)';
+  }
+  return 'Single Elimination (K.O.)';
+}
 
 interface CategoryStats {
   participantCount: number;
@@ -383,7 +383,7 @@ export default function BracketView({
 
                   <div className="flex flex-wrap gap-2 mb-3">
                     <span className="bg-kyokushin-bg px-2 py-0.5 rounded text-xs text-kyokushin-text-muted">
-                      {FORMAT_LABELS[cat.tournamentFormat] ?? cat.tournamentFormat}
+                      {getFormatLabel(cat)}
                     </span>
                     <span className="flex items-center gap-1 bg-kyokushin-bg px-2 py-0.5 rounded text-xs text-kyokushin-text-muted">
                       <Users size={10} />
@@ -395,7 +395,15 @@ export default function BracketView({
                     <p className="text-xs text-kyokushin-text-muted">
                       {stats.participantCount === 0 && registrationConfirmed
                         ? 'Kein Kampf – keine Teilnehmer'
-                        : 'Noch kein Turnierbaum generiert'}
+                        : cat.discipline === 'kumite' && !cat.roundsConfigured
+                          ? 'Runden nicht konfiguriert'
+                          : 'Noch kein Turnierbaum generiert'}
+                    </p>
+                  )}
+                  {cat.discipline === 'kumite' && !cat.roundsConfigured && stats.status === 'empty' && (
+                    <p className="text-xs text-orange-400 flex items-center gap-1 mt-1">
+                      <AlertTriangle size={10} />
+                      Einstellungen fehlen
                     </p>
                   )}
 
@@ -435,6 +443,7 @@ export default function BracketView({
   // ===================== DETAIL VIEW =====================
   const detailStats = categoryStats.get(activeCategory);
   const detailParticipantCount = detailStats?.participantCount ?? 0;
+  const categoryRoundsConfigured = category?.discipline === 'kata' || !!category?.roundsConfigured;
 
   return (
     <div>
@@ -458,11 +467,22 @@ export default function BracketView({
           {category && (
             <>
               <span className="bg-kyokushin-bg border border-kyokushin-border px-3 py-1 rounded-full text-xs text-kyokushin-text-muted">
-                {FORMAT_LABELS[category.tournamentFormat] ?? category.tournamentFormat}
+                {getFormatLabel(category)}
               </span>
-              {category.discipline === 'kumite' && (
+              {category.discipline === 'kumite' && category.fightDuration1 && (
                 <span className="bg-kyokushin-bg border border-kyokushin-border px-3 py-1 rounded-full text-xs text-kyokushin-text-muted">
-                  {Math.floor((category.fightDuration1 ?? 120) / 60)}:{String((category.fightDuration1 ?? 120) % 60).padStart(2, '0')} / {Math.floor((category.fightDuration2 ?? 120) / 60)}:{String((category.fightDuration2 ?? 120) % 60).padStart(2, '0')}
+                  R1: {Math.floor(category.fightDuration1 / 60)}:{String(category.fightDuration1 % 60).padStart(2, '0')}
+                  {category.fightDuration2 && <> / R2: {Math.floor(category.fightDuration2 / 60)}:{String(category.fightDuration2 % 60).padStart(2, '0')}</>}
+                </span>
+              )}
+              {category.enableWeightDecision && (
+                <span className="bg-blue-500/15 border border-blue-500/30 px-3 py-1 rounded-full text-xs text-blue-400">
+                  R3: Gewicht ({category.weightDecisionThreshold ?? 3} kg)
+                </span>
+              )}
+              {category.fightDuration3 && (
+                <span className="bg-amber-500/15 border border-amber-500/30 px-3 py-1 rounded-full text-xs text-amber-400">
+                  R3: Pflichtentscheid
                 </span>
               )}
               {category.boardBreaking && (
@@ -481,7 +501,7 @@ export default function BracketView({
 
         <button
           onClick={handleGenerateRequest}
-          disabled={!category || detailParticipantCount < 2 || !registrationConfirmed}
+          disabled={!category || detailParticipantCount < 2 || !registrationConfirmed || !categoryRoundsConfigured}
           className="flex items-center gap-2 bg-kyokushin-red hover:bg-kyokushin-red-dark disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
         >
           <Play size={16} />
@@ -496,6 +516,18 @@ export default function BracketView({
             <p className="text-sm text-amber-400 font-medium">Registrierung noch nicht abgeschlossen</p>
             <p className="text-sm text-kyokushin-text-muted mt-1">
               Bitte zuerst im Kategorien-Tab die Sichtkontrolle durchführen und bestätigen, bevor Turnierbäume generiert werden können.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {registrationConfirmed && !categoryRoundsConfigured && (
+        <div className="mb-4 bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle size={18} className="text-orange-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-orange-400 font-medium">Rundenablauf nicht konfiguriert</p>
+            <p className="text-sm text-kyokushin-text-muted mt-1">
+              Bitte zuerst im Kategorien-Tab die Kampfzeiten und Rundeneinstellungen für diese Kategorie konfigurieren, bevor der Turnierbaum generiert werden kann.
             </p>
           </div>
         </div>
@@ -523,13 +555,15 @@ export default function BracketView({
           <p className="text-kyokushin-text-muted mb-6">
             {!registrationConfirmed
               ? 'Bitte zuerst die Sichtkontrolle im Kategorien-Tab abschließen.'
-              : detailParticipantCount === 0
-                ? 'Kein Kampf – keine Teilnehmer in dieser Kategorie zugewiesen.'
-                : detailParticipantCount < 2
-                  ? `Nur ${detailParticipantCount} Teilnehmer in dieser Kategorie. Mindestens 2 benötigt.`
-                  : `${detailParticipantCount} Teilnehmer bereit. Klicke auf "Turnierbaum generieren".`}
+              : !categoryRoundsConfigured
+                ? 'Bitte zuerst im Kategorien-Tab den Rundenablauf konfigurieren.'
+                : detailParticipantCount === 0
+                  ? 'Kein Kampf – keine Teilnehmer in dieser Kategorie zugewiesen.'
+                  : detailParticipantCount < 2
+                    ? `Nur ${detailParticipantCount} Teilnehmer in dieser Kategorie. Mindestens 2 benötigt.`
+                    : `${detailParticipantCount} Teilnehmer bereit. Klicke auf "Turnierbaum generieren".`}
           </p>
-          {detailParticipantCount >= 2 && registrationConfirmed && (
+          {detailParticipantCount >= 2 && registrationConfirmed && categoryRoundsConfigured && (
             <button
               onClick={handleGenerateRequest}
               className="inline-flex items-center gap-2 bg-kyokushin-red hover:bg-kyokushin-red-dark text-white px-6 py-3 rounded-lg font-medium transition-colors"

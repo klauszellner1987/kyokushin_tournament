@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Play, Pause, Square, ChevronDown, ChevronUp, Timer, ShieldBan, Plus } from 'lucide-react';
+import { Play, Pause, Square, ChevronDown, ChevronUp, Timer, ShieldBan, Plus, Scale } from 'lucide-react';
 import type { Match, Category, FightGroup, Participant } from '../../types';
 import { advanceWinner } from '../../utils/bracketGenerator';
 import { useTimer } from '../../hooks/useTimer';
@@ -20,6 +20,31 @@ interface Props {
   onDisqualify: (participantId: string) => Promise<void>;
 }
 
+function getCurrentFightRound(match: Match | null): number {
+  if (!match) return 1;
+  if (match.fightRound) return match.fightRound;
+  if (match.isExtension) return 2;
+  return 1;
+}
+
+function getDurationForRound(round: number, category: Category): number {
+  switch (round) {
+    case 1: return category.fightDuration1 ?? 120;
+    case 2: return category.fightDuration2 ?? 120;
+    case 3: return category.fightDuration3 ?? 120;
+    default: return 120;
+  }
+}
+
+function getRoundLabel(round: number): string {
+  switch (round) {
+    case 1: return 'Runde 1';
+    case 2: return 'Runde 2 (Verlängerung)';
+    case 3: return 'Runde 3 (Pflichtentscheid)';
+    default: return `Runde ${round}`;
+  }
+}
+
 export default function MatPanel({
   matNumber,
   currentMatch,
@@ -37,6 +62,7 @@ export default function MatPanel({
   const [showResultModal, setShowResultModal] = useState(false);
   const [showDecisionModal, setShowDecisionModal] = useState(false);
   const [showDqModal, setShowDqModal] = useState(false);
+  const [showWeightDecision, setShowWeightDecision] = useState(false);
   const [score1, setScore1] = useState(0);
   const [score2, setScore2] = useState(0);
   const [timerExpiredHandled, setTimerExpiredHandled] = useState<string | null>(null);
@@ -53,6 +79,8 @@ export default function MatPanel({
   const isRunning = currentMatch?.status === 'running';
   const isPaused = isRunning && currentMatch?.timerPausedRemaining != null;
   const isTimerActive = isRunning && currentMatch?.timerEndsAt != null && !isPaused;
+
+  const currentRound = getCurrentFightRound(currentMatch);
 
   useEffect(() => {
     if (isExpired && currentMatch && timerExpiredHandled !== currentMatch.id) {
@@ -72,11 +100,12 @@ export default function MatPanel({
     return participantMap.get(id)?.club ?? '';
   };
 
+  const fighter1 = currentMatch?.fighter1Id ? participantMap.get(currentMatch.fighter1Id) : null;
+  const fighter2 = currentMatch?.fighter2Id ? participantMap.get(currentMatch.fighter2Id) : null;
+
   const handleStartFight = async () => {
     if (!currentMatch || !category) return;
-    const duration = currentMatch.isExtension
-      ? (category.fightDuration2 ?? 120)
-      : (category.fightDuration1 ?? 120);
+    const duration = getDurationForRound(currentRound, category);
     await onUpdateMatch(currentMatch.id, {
       status: 'running',
       timerEndsAt: Date.now() + duration * 1000,
@@ -143,15 +172,18 @@ export default function MatPanel({
 
     setShowDqModal(false);
     setShowDecisionModal(false);
+    setShowWeightDecision(false);
     setTimerExpiredHandled(null);
   };
 
-  const handleStartExtension = async () => {
+  const handleStartNextRound = async (nextRound: number) => {
     if (!currentMatch || !category) return;
     setShowDecisionModal(false);
     setShowResultModal(false);
+    setShowWeightDecision(false);
     await onUpdateMatch(currentMatch.id, {
-      isExtension: true,
+      fightRound: nextRound,
+      isExtension: nextRound >= 2,
       status: 'pending',
       timerEndsAt: undefined,
       timerPausedRemaining: undefined,
@@ -161,6 +193,7 @@ export default function MatPanel({
 
   const handleOpenResult = () => {
     setShowDecisionModal(false);
+    setShowWeightDecision(false);
     setScore1(0);
     setScore2(0);
     setShowResultModal(true);
@@ -191,6 +224,36 @@ export default function MatPanel({
     }
 
     setShowResultModal(false);
+    setTimerExpiredHandled(null);
+  };
+
+  const handleWeightDecisionWinner = async (winnerId: string) => {
+    if (!currentMatch) return;
+    const s1 = winnerId === currentMatch.fighter1Id ? 1 : 0;
+    const s2 = winnerId === currentMatch.fighter2Id ? 1 : 0;
+
+    await onUpdateMatch(currentMatch.id, {
+      winnerId,
+      score1: s1,
+      score2: s2,
+      status: 'completed',
+      timerEndsAt: undefined,
+      timerPausedRemaining: undefined,
+    });
+
+    const updatedMatch = { ...currentMatch, winnerId, score1: s1, score2: s2, status: 'completed' as const };
+    const categoryMatches = allMatches.filter((m) =>
+      fightGroups
+        .filter((g) => g.categoryId === group?.categoryId)
+        .some((g) => g.id === m.fightGroupId),
+    );
+    const advance = advanceWinner(categoryMatches, updatedMatch);
+    if (advance) {
+      await onUpdateMatch(advance.matchId, advance.updates);
+    }
+
+    setShowWeightDecision(false);
+    setShowDecisionModal(false);
     setTimerExpiredHandled(null);
   };
 
@@ -234,16 +297,131 @@ export default function MatPanel({
     return Math.max(...categoryMatches.map((m) => m.round), 0);
   }, [categoryMatches]);
 
-  const fighter1 = currentMatch?.fighter1Id ? participantMap.get(currentMatch.fighter1Id) : null;
-  const fighter2 = currentMatch?.fighter2Id ? participantMap.get(currentMatch.fighter2Id) : null;
   const nextF1 = nextMatch?.fighter1Id ? participantMap.get(nextMatch.fighter1Id) : null;
   const nextF2 = nextMatch?.fighter2Id ? participantMap.get(nextMatch.fighter2Id) : null;
 
   const isFlagSystem = category?.kataSystem === 'flag';
-  const canExtend = !currentMatch?.isExtension && !!category?.fightDuration2;
   const isDraw = score1 === score2;
 
-  const showInlinePanel = showDecisionModal || showResultModal || showDqModal;
+  const canGoToRound2 = currentRound === 1 && !!category?.fightDuration2;
+  const hasWeightDecision = !!category?.enableWeightDecision;
+  const canGoToRound3 = !!category?.fightDuration3;
+  const isFinalRound = currentRound === 3;
+
+  const weightDiff = useMemo(() => {
+    if (!fighter1 || !fighter2) return 0;
+    return Math.abs(fighter1.weight - fighter2.weight);
+  }, [fighter1, fighter2]);
+
+  const weightThreshold = category?.weightDecisionThreshold ?? 3;
+  const lighterFighterId = fighter1 && fighter2
+    ? (fighter1.weight <= fighter2.weight ? currentMatch?.fighter1Id : currentMatch?.fighter2Id)
+    : null;
+
+  const showInlinePanel = showDecisionModal || showResultModal || showDqModal || showWeightDecision;
+
+  const renderNextRoundOptions = () => {
+    if (currentRound === 1 && canGoToRound2) {
+      return (
+        <button
+          onClick={() => handleStartNextRound(2)}
+          className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white py-3 rounded-xl font-bold text-sm transition-colors"
+        >
+          Runde 2 starten (Verlängerung)
+          <span className="text-xs font-normal opacity-80">
+            ({Math.floor((category!.fightDuration2!) / 60)}:{String((category!.fightDuration2!) % 60).padStart(2, '0')})
+          </span>
+        </button>
+      );
+    }
+
+    if (currentRound === 2) {
+      return (
+        <>
+          {hasWeightDecision && (
+            <button
+              onClick={() => { setShowDecisionModal(false); setShowWeightDecision(true); }}
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-sm transition-colors"
+            >
+              <Scale size={16} />
+              Gewichtsentscheid
+            </button>
+          )}
+          {!hasWeightDecision && canGoToRound3 && (
+            <button
+              onClick={() => handleStartNextRound(3)}
+              className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white py-3 rounded-xl font-bold text-sm transition-colors"
+            >
+              Runde 3 starten (Pflichtentscheid)
+              <span className="text-xs font-normal opacity-80">
+                ({Math.floor((category!.fightDuration3!) / 60)}:{String((category!.fightDuration3!) % 60).padStart(2, '0')})
+              </span>
+            </button>
+          )}
+        </>
+      );
+    }
+
+    return null;
+  };
+
+  const renderDrawOptions = () => {
+    if (currentRound === 1 && canGoToRound2) {
+      return (
+        <button
+          onClick={() => handleStartNextRound(2)}
+          className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+        >
+          Unentschieden — Runde 2 starten
+        </button>
+      );
+    }
+
+    if (currentRound === 2) {
+      if (hasWeightDecision) {
+        return (
+          <button
+            onClick={() => { setShowResultModal(false); setShowWeightDecision(true); }}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+          >
+            Unentschieden — Gewichtsentscheid
+          </button>
+        );
+      }
+      if (canGoToRound3) {
+        return (
+          <button
+            onClick={() => handleStartNextRound(3)}
+            className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+          >
+            Unentschieden — Runde 3 starten (Pflichtentscheid)
+          </button>
+        );
+      }
+    }
+
+    return (
+      <div className="space-y-2">
+        <p className="text-xs text-kyokushin-text-muted text-center">
+          Unentschieden — {isFinalRound ? 'Pflichtentscheid' : 'Richterentscheid'}
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setScore1(1); setScore2(0); }}
+            className="flex-1 bg-red-600/80 hover:bg-red-600 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+          >
+            {getName(currentMatch!.fighter1Id)?.split(',')[0]}
+          </button>
+          <button
+            onClick={() => { setScore1(0); setScore2(1); }}
+            className="flex-1 bg-blue-600/80 hover:bg-blue-600 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+          >
+            {getName(currentMatch!.fighter2Id)?.split(',')[0]}
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="bg-kyokushin-card border border-kyokushin-border rounded-2xl flex flex-col overflow-hidden">
@@ -257,9 +435,9 @@ export default function MatPanel({
               {category.name}
             </span>
           )}
-          {currentMatch?.isExtension && (
+          {currentRound > 1 && (
             <span className="bg-amber-500/15 text-amber-400 text-xs px-2.5 py-1 rounded-full font-medium">
-              Verlängerung
+              {getRoundLabel(currentRound)}
             </span>
           )}
         </div>
@@ -271,7 +449,6 @@ export default function MatPanel({
       {/* Fight Area */}
       <div className="flex-1 p-5">
         {showInlinePanel && currentMatch ? (
-          /* Inline decision / result / DQ panel (replaces fight display) */
           showDqModal ? (
             <div className="space-y-4">
               <div className="flex items-center justify-center gap-2">
@@ -300,6 +477,92 @@ export default function MatPanel({
               </div>
               <button
                 onClick={() => setShowDqModal(false)}
+                className="w-full bg-kyokushin-border hover:bg-kyokushin-card-hover text-white px-4 py-2 rounded-lg text-sm transition-colors"
+              >
+                Abbrechen
+              </button>
+            </div>
+          ) : showWeightDecision ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-center gap-2">
+                <Scale size={20} className="text-blue-400" />
+                <h3 className="text-base font-bold text-white">Gewichtsentscheid</h3>
+              </div>
+
+              <div className="bg-kyokushin-bg rounded-xl p-4">
+                <div className="flex items-center justify-between gap-4 mb-3">
+                  <div className="text-center flex-1">
+                    <p className="text-sm font-bold text-white">{getName(currentMatch.fighter1Id)}</p>
+                    <p className="text-lg font-black text-white mt-1">{fighter1?.weight ?? '?'} kg</p>
+                  </div>
+                  <div className="text-center shrink-0">
+                    <Scale size={24} className="text-kyokushin-text-muted mx-auto mb-1" />
+                    <p className="text-xs text-kyokushin-text-muted">Differenz</p>
+                    <p className={`text-lg font-black ${weightDiff >= weightThreshold ? 'text-blue-400' : 'text-kyokushin-text-muted'}`}>
+                      {weightDiff.toFixed(1)} kg
+                    </p>
+                  </div>
+                  <div className="text-center flex-1">
+                    <p className="text-sm font-bold text-white">{getName(currentMatch.fighter2Id)}</p>
+                    <p className="text-lg font-black text-white mt-1">{fighter2?.weight ?? '?'} kg</p>
+                  </div>
+                </div>
+                <p className="text-xs text-kyokushin-text-muted text-center">
+                  Schwelle: {weightThreshold} kg
+                </p>
+              </div>
+
+              {weightDiff >= weightThreshold && lighterFighterId ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-blue-400 text-center font-medium">
+                    Gewichtsdifferenz ({weightDiff.toFixed(1)} kg) &ge; Schwelle ({weightThreshold} kg)
+                  </p>
+                  <button
+                    onClick={() => handleWeightDecisionWinner(lighterFighterId)}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-sm transition-colors"
+                  >
+                    {getName(lighterFighterId)} gewinnt (leichter)
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm text-kyokushin-text-muted text-center">
+                    Gewichtsdifferenz ({weightDiff.toFixed(1)} kg) &lt; Schwelle ({weightThreshold} kg) — kein Gewichtsentscheid möglich
+                  </p>
+                  {canGoToRound3 ? (
+                    <button
+                      onClick={() => handleStartNextRound(3)}
+                      className="w-full bg-amber-600 hover:bg-amber-700 text-white py-3 rounded-xl font-bold text-sm transition-colors"
+                    >
+                      Runde 3 starten (Pflichtentscheid)
+                      <span className="text-xs font-normal opacity-80 ml-2">
+                        ({Math.floor((category!.fightDuration3!) / 60)}:{String((category!.fightDuration3!) % 60).padStart(2, '0')})
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-xs text-kyokushin-text-muted text-center">Richterentscheid</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => currentMatch.fighter1Id && handleWeightDecisionWinner(currentMatch.fighter1Id)}
+                          className="flex-1 bg-red-600/80 hover:bg-red-600 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+                        >
+                          {getName(currentMatch.fighter1Id)?.split(',')[0]}
+                        </button>
+                        <button
+                          onClick={() => currentMatch.fighter2Id && handleWeightDecisionWinner(currentMatch.fighter2Id)}
+                          className="flex-1 bg-blue-600/80 hover:bg-blue-600 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+                        >
+                          {getName(currentMatch.fighter2Id)?.split(',')[0]}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button
+                onClick={() => setShowWeightDecision(false)}
                 className="w-full bg-kyokushin-border hover:bg-kyokushin-card-hover text-white px-4 py-2 rounded-lg text-sm transition-colors"
               >
                 Abbrechen
@@ -366,32 +629,7 @@ export default function MatPanel({
                     </div>
                   </div>
                   <div className="flex flex-col gap-2">
-                    {isDraw && canExtend ? (
-                      <button
-                        onClick={handleStartExtension}
-                        className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
-                      >
-                        Unentschieden — Verlängerung starten
-                      </button>
-                    ) : isDraw ? (
-                      <div className="space-y-2">
-                        <p className="text-xs text-kyokushin-text-muted text-center">Unentschieden — Richterentscheid</p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => { setScore1(1); setScore2(0); }}
-                            className="flex-1 bg-red-600/80 hover:bg-red-600 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
-                          >
-                            {getName(currentMatch.fighter1Id)?.split(',')[0]}
-                          </button>
-                          <button
-                            onClick={() => { setScore1(0); setScore2(1); }}
-                            className="flex-1 bg-blue-600/80 hover:bg-blue-600 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
-                          >
-                            {getName(currentMatch.fighter2Id)?.split(',')[0]}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
+                    {isDraw ? renderDrawOptions() : (
                       <button
                         onClick={handleSubmitResult}
                         className="w-full bg-kyokushin-red hover:bg-kyokushin-red-dark text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
@@ -422,17 +660,7 @@ export default function MatPanel({
                 Ergebnis eintragen
               </button>
 
-              {canExtend && (
-                <button
-                  onClick={handleStartExtension}
-                  className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white py-3 rounded-xl font-bold text-sm transition-colors"
-                >
-                  Verlängerung starten
-                  <span className="text-xs font-normal opacity-80">
-                    ({Math.floor((category!.fightDuration2!) / 60)}:{String((category!.fightDuration2!) % 60).padStart(2, '0')})
-                  </span>
-                </button>
-              )}
+              {renderNextRoundOptions()}
 
               <button
                 onClick={() => { setShowDecisionModal(false); setShowDqModal(true); }}
@@ -567,10 +795,7 @@ export default function MatPanel({
               <div className="flex items-center justify-center gap-2 text-xs text-kyokushin-text-muted">
                 <Timer size={12} />
                 <span>
-                  {Math.floor((category.fightDuration1 ?? 120) / 60)}:{String((category.fightDuration1 ?? 120) % 60).padStart(2, '0')} Kampfzeit
-                  {category.fightDuration2 && (
-                    <> · {Math.floor(category.fightDuration2 / 60)}:{String(category.fightDuration2 % 60).padStart(2, '0')} Verlängerung</>
-                  )}
+                  {getRoundLabel(currentRound)}: {Math.floor(getDurationForRound(currentRound, category) / 60)}:{String(getDurationForRound(currentRound, category) % 60).padStart(2, '0')} Kampfzeit
                 </span>
               </div>
             )}

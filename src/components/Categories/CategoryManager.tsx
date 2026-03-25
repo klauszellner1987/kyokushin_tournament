@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, Pencil, Wand2, ChevronDown, ChevronRight, AlertTriangle, Users, Eye } from 'lucide-react';
-import type { Category, Participant, TournamentFormat, TournamentType, BeltGrade, KataSystem } from '../../types';
+import type { Category, Participant, TournamentType, BeltGrade, KataSystem } from '../../types';
 import { BELT_GRADES, getAge } from '../../types';
 import { autoAssign } from '../../utils/groupAssignment';
 import CategoryReview from './CategoryReview';
@@ -21,12 +21,12 @@ interface Props {
   registrationConfirmed?: boolean;
 }
 
-const FORMAT_LABELS: Record<TournamentFormat, string> = {
-  single_elimination: 'Single Elimination (K.O.)',
-  double_elimination: 'Double Elimination',
-  round_robin: 'Round Robin (Jeder gegen Jeden)',
-  group_then_knockout: 'Gruppenphase + K.O.',
-};
+function getFormatLabel(discipline: string, kataSystem?: string): string {
+  if (discipline === 'kata') {
+    return (kataSystem ?? 'points') === 'flag' ? 'K.O. (Flaggensystem)' : 'Round Robin (Punktesystem)';
+  }
+  return 'Single Elimination (K.O.)';
+}
 
 const emptyCategory: Omit<Category, 'id'> = {
   name: '',
@@ -39,10 +39,13 @@ const emptyCategory: Omit<Category, 'id'> = {
   gender: 'mixed',
   discipline: 'kumite',
   tournamentFormat: 'single_elimination',
-  fightDuration1: 120,
-  fightDuration2: 120,
+  fightDuration1: undefined,
+  fightDuration2: undefined,
   boardBreaking: false,
-  weightDecision: false,
+  enableWeightDecision: false,
+  weightDecisionThreshold: 3,
+  fightDuration3: undefined,
+  roundsConfigured: false,
   kataSystem: 'points',
 };
 
@@ -146,11 +149,19 @@ export default function CategoryManager({ tournamentType, categories, participan
 
   const handleSubmit = async () => {
     if (!form.name.trim()) return;
+    const data = { ...form };
+    if (data.discipline === 'kumite') {
+      data.tournamentFormat = 'single_elimination';
+      data.roundsConfigured = !!(data.fightDuration1 && data.fightDuration2);
+    } else {
+      data.tournamentFormat = (data.kataSystem ?? 'points') === 'flag' ? 'single_elimination' : 'round_robin';
+      data.roundsConfigured = true;
+    }
     if (editId) {
-      await categories.update(editId, form);
+      await categories.update(editId, data);
       setEditId(null);
     } else {
-      await categories.add(form);
+      await categories.add(data);
     }
     setForm(emptyCategory);
     setShowForm(false);
@@ -162,10 +173,13 @@ export default function CategoryManager({ tournamentType, categories, participan
       weightMin: c.weightMin, weightMax: c.weightMax,
       beltMin: c.beltMin, beltMax: c.beltMax,
       gender: c.gender, discipline: c.discipline, tournamentFormat: c.tournamentFormat,
-      fightDuration1: c.fightDuration1 ?? 120,
-      fightDuration2: c.fightDuration2 ?? 120,
+      fightDuration1: c.fightDuration1,
+      fightDuration2: c.fightDuration2,
       boardBreaking: c.boardBreaking ?? false,
-      weightDecision: c.weightDecision ?? false,
+      enableWeightDecision: c.enableWeightDecision ?? false,
+      weightDecisionThreshold: c.weightDecisionThreshold ?? 3,
+      fightDuration3: c.fightDuration3,
+      roundsConfigured: c.roundsConfigured ?? false,
       kataSystem: c.kataSystem ?? 'points',
     });
     setEditId(c.id);
@@ -220,19 +234,6 @@ export default function CategoryManager({ tournamentType, categories, participan
             placeholder="z.B. Kumite Herren -75kg"
             className="w-full bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-kyokushin-red"
           />
-        </div>
-        <div>
-          <label className="block text-xs text-kyokushin-text-muted mb-1">Turnierformat</label>
-          <select
-            value={form.tournamentFormat}
-            onChange={(e) => setForm({ ...form, tournamentFormat: e.target.value as TournamentFormat })}
-            disabled={form.discipline === 'kata' && form.kataSystem === 'flag'}
-            className="w-full bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-kyokushin-red disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {Object.entries(FORMAT_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -302,50 +303,95 @@ export default function CategoryManager({ tournamentType, categories, participan
       <div className="border-t border-kyokushin-border mt-4 pt-4">
         <h5 className="text-sm font-medium text-kyokushin-text-muted mb-3">Regeln</h5>
         {form.discipline === 'kumite' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-xs text-kyokushin-text-muted mb-1">1. Kampf (Sekunden)</label>
-              <input
-                type="number"
-                min="30"
-                step="10"
-                value={form.fightDuration1 ?? 120}
-                onChange={(e) => setForm({ ...form, fightDuration1: parseInt(e.target.value) || 120 })}
-                className="w-full bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-kyokushin-red"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-kyokushin-text-muted mb-1">2. Kampf (Sekunden)</label>
-              <input
-                type="number"
-                min="30"
-                step="10"
-                value={form.fightDuration2 ?? 120}
-                onChange={(e) => setForm({ ...form, fightDuration2: parseInt(e.target.value) || 120 })}
-                className="w-full bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-kyokushin-red"
-              />
-            </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 cursor-pointer pb-2">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs text-kyokushin-text-muted mb-1">1. Runde — Kampfzeit (Sekunden)</label>
                 <input
-                  type="checkbox"
-                  checked={form.boardBreaking ?? false}
-                  onChange={(e) => setForm({ ...form, boardBreaking: e.target.checked })}
-                  className="accent-kyokushin-red"
+                  type="number"
+                  min="30"
+                  step="10"
+                  value={form.fightDuration1 ?? ''}
+                  placeholder="z.B. 120"
+                  onChange={(e) => setForm({ ...form, fightDuration1: e.target.value ? parseInt(e.target.value) : undefined })}
+                  className="w-full bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-kyokushin-red"
                 />
-                <span className="text-sm text-white">Bruchtest</span>
-              </label>
-            </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 cursor-pointer pb-2">
+              </div>
+              <div>
+                <label className="block text-xs text-kyokushin-text-muted mb-1">2. Runde — Verlängerung (Sekunden)</label>
                 <input
-                  type="checkbox"
-                  checked={form.weightDecision ?? false}
-                  onChange={(e) => setForm({ ...form, weightDecision: e.target.checked })}
-                  className="accent-kyokushin-red"
+                  type="number"
+                  min="30"
+                  step="10"
+                  value={form.fightDuration2 ?? ''}
+                  placeholder="z.B. 120"
+                  onChange={(e) => setForm({ ...form, fightDuration2: e.target.value ? parseInt(e.target.value) : undefined })}
+                  className="w-full bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-kyokushin-red"
                 />
-                <span className="text-sm text-white">Gewichtsentscheid</span>
-              </label>
+              </div>
+              <div className="flex items-end">
+                <label className="flex items-center gap-2 cursor-pointer pb-2">
+                  <input
+                    type="checkbox"
+                    checked={form.boardBreaking ?? false}
+                    onChange={(e) => setForm({ ...form, boardBreaking: e.target.checked })}
+                    className="accent-kyokushin-red"
+                  />
+                  <span className="text-sm text-white">Bruchtest</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="border-t border-kyokushin-border/50 pt-4">
+              <p className="text-xs text-kyokushin-text-muted mb-3">Bei Unentschieden nach Runde 2</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className={`rounded-lg border p-3 transition-colors ${form.enableWeightDecision ? 'border-blue-500/40 bg-blue-500/5' : 'border-kyokushin-border'}`}>
+                  <label className="flex items-center gap-2 cursor-pointer mb-2">
+                    <input
+                      type="checkbox"
+                      checked={form.enableWeightDecision ?? false}
+                      onChange={(e) => setForm({ ...form, enableWeightDecision: e.target.checked })}
+                      className="accent-kyokushin-red"
+                    />
+                    <span className="text-sm text-white font-medium">Gewichtsentscheid</span>
+                  </label>
+                  {form.enableWeightDecision && (
+                    <div className="ml-6">
+                      <label className="block text-xs text-kyokushin-text-muted mb-1">Kilogramm-Unterschied (Schwelle)</label>
+                      <input
+                        type="number"
+                        min="0.1"
+                        step="0.5"
+                        value={form.weightDecisionThreshold ?? 3}
+                        onChange={(e) => setForm({ ...form, weightDecisionThreshold: parseFloat(e.target.value) || 3 })}
+                        className="w-full bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-kyokushin-red"
+                      />
+                      <p className="text-[10px] text-kyokushin-text-muted mt-1">
+                        Leichterer Kämpfer gewinnt, wenn Gewichtsdifferenz &ge; Schwelle
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className={`rounded-lg border p-3 transition-colors ${form.fightDuration3 ? 'border-amber-500/40 bg-amber-500/5' : 'border-kyokushin-border'}`}>
+                  <span className="text-sm text-white font-medium block mb-2">3. Runde — Pflichtentscheid</span>
+                  <div>
+                    <label className="block text-xs text-kyokushin-text-muted mb-1">Kampfzeit (Sekunden)</label>
+                    <input
+                      type="number"
+                      min="30"
+                      step="10"
+                      value={form.fightDuration3 ?? ''}
+                      placeholder="z.B. 120"
+                      onChange={(e) => setForm({ ...form, fightDuration3: e.target.value ? parseInt(e.target.value) : undefined })}
+                      className="w-full bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-kyokushin-red"
+                    />
+                    <p className="text-[10px] text-kyokushin-text-muted mt-1">
+                      Nach Ablauf: Pflichtentscheid — Kampfrichter müssen 1:0 vergeben
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -487,7 +533,7 @@ export default function CategoryManager({ tournamentType, categories, participan
 
                 <div className="flex flex-wrap gap-2 text-xs mb-3">
                   <span className="bg-kyokushin-bg px-2 py-1 rounded text-kyokushin-text-muted">
-                    {FORMAT_LABELS[c.tournamentFormat]}
+                    {getFormatLabel(c.discipline, c.kataSystem)}
                   </span>
                   <span className="bg-kyokushin-bg px-2 py-1 rounded text-kyokushin-text-muted capitalize">
                     {c.discipline}
@@ -509,7 +555,7 @@ export default function CategoryManager({ tournamentType, categories, participan
                   )}
                   {c.discipline === 'kumite' && (c.fightDuration1 || c.fightDuration2) && (
                     <span className="bg-kyokushin-bg px-2 py-1 rounded text-kyokushin-text-muted">
-                      {Math.floor((c.fightDuration1 ?? 120) / 60)}:{String((c.fightDuration1 ?? 120) % 60).padStart(2, '0')} / {Math.floor((c.fightDuration2 ?? 120) / 60)}:{String((c.fightDuration2 ?? 120) % 60).padStart(2, '0')}
+                      R1: {Math.floor((c.fightDuration1 ?? 0) / 60)}:{String((c.fightDuration1 ?? 0) % 60).padStart(2, '0')} / R2: {Math.floor((c.fightDuration2 ?? 0) / 60)}:{String((c.fightDuration2 ?? 0) % 60).padStart(2, '0')}
                     </span>
                   )}
                   {c.boardBreaking && (
@@ -517,9 +563,20 @@ export default function CategoryManager({ tournamentType, categories, participan
                       Bruchtest
                     </span>
                   )}
-                  {c.weightDecision && (
+                  {c.enableWeightDecision && (
                     <span className="bg-blue-500/15 px-2 py-1 rounded text-blue-400">
-                      Gewichtsentscheid
+                      Gewichtsentscheid ({c.weightDecisionThreshold ?? 3} kg)
+                    </span>
+                  )}
+                  {c.fightDuration3 && (
+                    <span className="bg-amber-500/15 px-2 py-1 rounded text-amber-400">
+                      R3: Pflichtentscheid ({Math.floor(c.fightDuration3 / 60)}:{String(c.fightDuration3 % 60).padStart(2, '0')})
+                    </span>
+                  )}
+                  {c.discipline === 'kumite' && !c.roundsConfigured && (
+                    <span className="bg-orange-500/15 px-2 py-1 rounded text-orange-400 flex items-center gap-1">
+                      <AlertTriangle size={10} />
+                      Runden nicht konfiguriert
                     </span>
                   )}
                   {c.discipline === 'kata' && (

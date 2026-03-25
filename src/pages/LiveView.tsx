@@ -142,7 +142,8 @@ function SingleMatView({
 
   const { isExpired } = useTimer(currentMatch?.timerEndsAt, currentMatch?.timerPausedRemaining);
   const timerExpired = hasTimer && isExpired;
-  const isExtensionReady = currentMatch?.status === 'pending' && currentMatch?.isExtension;
+  const currentFightRound = currentMatch?.fightRound ?? (currentMatch?.isExtension ? 2 : 1);
+  const isNextRoundReady = currentMatch?.status === 'pending' && currentFightRound > 1;
 
   const showResult = !currentMatch && lastCompleted;
 
@@ -195,14 +196,14 @@ function SingleMatView({
               Zeit abgelaufen
             </span>
           )}
-          {isExtensionReady && (
+          {isNextRoundReady && (
             <span className="bg-amber-500/20 text-amber-400 px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide animate-pulse">
-              Verlängerung
+              {currentFightRound === 3 ? 'Pflichtentscheid' : 'Verlängerung'}
             </span>
           )}
-          {currentMatch?.isExtension && currentMatch?.status === 'running' && (
+          {currentFightRound > 1 && currentMatch?.status === 'running' && (
             <span className="bg-amber-500/20 text-amber-400 px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide">
-              Verlängerung
+              {currentFightRound === 3 ? 'Pflichtentscheid' : 'Verlängerung'}
             </span>
           )}
           <span className="bg-kyokushin-gold/20 text-kyokushin-gold px-4 py-1.5 rounded-full text-sm font-bold">
@@ -226,10 +227,10 @@ function SingleMatView({
                     Wertung läuft...
                   </p>
                 </div>
-              ) : isExtensionReady ? (
+              ) : isNextRoundReady ? (
                 <div>
                   <div className="text-5xl font-black text-amber-400 drop-shadow-[0_0_30px_rgba(245,158,11,0.4)]">
-                    VERLÄNGERUNG
+                    {currentFightRound === 3 ? 'PFLICHTENTSCHEID' : 'VERLÄNGERUNG'}
                   </div>
                   <p className="text-kyokushin-text-muted mt-4 text-lg uppercase tracking-widest">
                     Bereit machen
@@ -359,7 +360,8 @@ function OverviewMatFight({
   const hasTimer = mat.current?.status === 'running' &&
     (mat.current.timerEndsAt != null || mat.current.timerPausedRemaining != null);
   const timerExpired = hasTimer && isExpired;
-  const isExtensionReady = mat.current?.status === 'pending' && mat.current?.isExtension;
+  const matFightRound = mat.current?.fightRound ?? (mat.current?.isExtension ? 2 : 1);
+  const matNextRoundReady = mat.current?.status === 'pending' && matFightRound > 1;
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-3">
@@ -375,9 +377,9 @@ function OverviewMatFight({
             <div className="text-center shrink-0">
               <p className="text-lg font-black text-kyokushin-red animate-pulse">BEENDET</p>
             </div>
-          ) : isExtensionReady ? (
+          ) : matNextRoundReady ? (
             <div className="text-center shrink-0">
-              <p className="text-lg font-black text-amber-400">VERL.</p>
+              <p className="text-lg font-black text-amber-400">{matFightRound === 3 ? 'R3' : 'VERL.'}</p>
             </div>
           ) : (
             <span className="text-2xl font-black text-kyokushin-red">VS</span>
