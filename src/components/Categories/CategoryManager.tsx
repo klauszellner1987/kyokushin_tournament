@@ -501,16 +501,23 @@ export default function CategoryManager({ tournamentType, categories, participan
           const assigned = assignmentMap.get(c.id) ?? [];
           const isExpanded = expandedCategories.has(c.id);
           const isEditing = editId === c.id && showForm;
+          const isReadyForBracket = assigned.length >= 2 && (c.roundsConfigured || c.discipline === 'kata');
           const countColor = assigned.length === 0
             ? 'text-kyokushin-text-muted'
-            : assigned.length === 1
-              ? 'text-amber-400'
-              : 'text-green-400';
+            : isReadyForBracket
+              ? 'text-green-400'
+              : 'text-red-400';
 
           return (
             <React.Fragment key={c.id}>
             <div
-              className={`bg-kyokushin-card border rounded-xl overflow-hidden transition-colors ${isEditing ? 'border-kyokushin-red' : 'border-kyokushin-border hover:border-kyokushin-red/50'}`}
+              className={`bg-kyokushin-card border rounded-xl overflow-hidden transition-colors ${
+                isEditing
+                  ? 'border-kyokushin-red'
+                  : isReadyForBracket
+                    ? 'border-green-500/30 hover:border-green-500/50'
+                    : 'border-kyokushin-border hover:border-kyokushin-red/50'
+              }`}
             >
               <div className="p-5">
                 <div className="flex items-start justify-between mb-3">

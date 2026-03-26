@@ -43,10 +43,13 @@ test.describe.serial('Tournament full flow', () => {
     await expect(page.getByText('Mustermann, Max')).toBeVisible();
     await expect(page.getByText('Schmidt, Anna')).toBeVisible();
     await expect(page.getByText('Koch, Sara')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Anmeldung abschließen' }).click();
+    await expect(page.getByText('Anmeldung abgeschlossen')).toBeVisible({ timeout: 5_000 });
   });
 
   test('generate auto-categories', async () => {
-    await page.getByRole('button', { name: 'Kategorien' }).click();
+    await page.getByRole('button', { name: 'Kategorien', exact: true }).click();
 
     await expect(page.getByText('Teilnehmer warten auf Kategorien')).toBeVisible({ timeout: 5_000 });
 

@@ -35,6 +35,7 @@ export default function TournamentList() {
     type: 'mixed' as TournamentType,
     matCount: 2,
   });
+  const [dateError, setDateError] = useState('');
 
   const handleNewTournament = () => {
     if (!canCreateTournament) {
@@ -46,6 +47,23 @@ export default function TournamentList() {
 
   const handleCreate = async () => {
     if (!formData.name.trim()) return;
+
+    const isoDate = parseDateDE(formData.date);
+
+    if (formData.date.trim()) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+        setDateError('Bitte ein gültiges Datum eingeben (TT.MM.JJJJ).');
+        return;
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      if (isoDate < today) {
+        setDateError('Das Turnierdatum darf nicht in der Vergangenheit liegen.');
+        return;
+      }
+    }
+
+    setDateError('');
 
     const id = await add({
       name: formData.name,
@@ -124,7 +142,9 @@ export default function TournamentList() {
             />
             <DateInput
               value={formData.date}
-              onChange={(v) => setFormData({ ...formData, date: v })}
+              onChange={(v) => { setFormData({ ...formData, date: v }); setDateError(''); }}
+              min={new Date().toISOString().split('T')[0]}
+              error={!!dateError}
             />
             <input
               type="text"
@@ -134,6 +154,9 @@ export default function TournamentList() {
               className="bg-kyokushin-bg border border-kyokushin-border rounded-lg px-4 py-2.5 text-white placeholder-kyokushin-text-muted focus:outline-none focus:border-kyokushin-red"
             />
           </div>
+          {dateError && (
+            <p className="text-red-500 text-sm mt-2">{dateError}</p>
+          )}
 
           <div className="mt-4">
             <label className="block text-sm text-kyokushin-text-muted mb-2">Turnier-Typ</label>
@@ -159,28 +182,22 @@ export default function TournamentList() {
           </div>
 
           <div className="mt-4">
-            <label className="block text-sm text-kyokushin-text-muted mb-2">
-              Anzahl Matten: <span className="text-white font-bold">{formData.matCount}</span>
-            </label>
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min="1"
-                max="8"
-                value={formData.matCount}
-                onChange={(e) => setFormData({ ...formData, matCount: parseInt(e.target.value) })}
-                className="flex-1 accent-kyokushin-red"
-              />
-              <div className="flex gap-1">
-                {Array.from({ length: formData.matCount }, (_, i) => (
-                  <div
-                    key={i}
-                    className="w-8 h-8 rounded bg-kyokushin-red/20 border border-kyokushin-red/50 flex items-center justify-center text-xs text-kyokushin-red font-bold"
-                  >
-                    {i + 1}
-                  </div>
-                ))}
-              </div>
+            <label className="block text-sm text-kyokushin-text-muted mb-2">Anzahl Matten</label>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, matCount: n })}
+                  className={`w-10 h-10 rounded-lg font-bold text-sm transition-all ${
+                    formData.matCount === n
+                      ? 'bg-kyokushin-red text-white'
+                      : 'bg-kyokushin-bg border border-kyokushin-border text-kyokushin-text-muted hover:border-kyokushin-red hover:text-white'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
             </div>
           </div>
           <div className="flex gap-3 mt-4">

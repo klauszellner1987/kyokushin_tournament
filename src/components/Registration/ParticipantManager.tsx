@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
-import { Plus, Upload, Pencil, Trash2, Search, X, AlertTriangle, FileWarning } from 'lucide-react';
+import { Plus, Upload, Pencil, Trash2, Search, X, AlertTriangle, FileWarning, Lock, Unlock, CheckCircle2 } from 'lucide-react';
 import type { Participant, Category, Discipline, BeltGrade, TournamentType, Match, ParticipantStatus } from '../../types';
 import { BELT_GRADES, BELT_COLORS } from '../../types';
 import DateInput, { parseDateDE, formatDateDE } from '../ui/DateInput';
@@ -48,6 +48,9 @@ interface Props {
   matches: Match[];
   onWithdraw?: (participantId: string, status: ParticipantStatus) => Promise<void>;
   registrationConfirmed?: boolean;
+  registrationClosed?: boolean;
+  onCloseRegistration?: () => Promise<void>;
+  onReopenRegistration?: () => Promise<void>;
 }
 
 function getDefaultDiscipline(type: TournamentType): Discipline[] {
@@ -56,7 +59,7 @@ function getDefaultDiscipline(type: TournamentType): Discipline[] {
   return ['kumite'];
 }
 
-export default function ParticipantManager({ tournamentType, participants, categories, matches, onWithdraw, registrationConfirmed }: Props) {
+export default function ParticipantManager({ tournamentType, participants, categories, matches, onWithdraw, registrationConfirmed, registrationClosed, onCloseRegistration, onReopenRegistration }: Props) {
   const emptyForm: Omit<Participant, 'id'> = {
     firstName: '',
     lastName: '',
@@ -578,6 +581,15 @@ export default function ParticipantManager({ tournamentType, participants, categ
               <Upload size={14} />
               CSV Import
             </button>
+            {!registrationClosed && participants.data.length >= 2 && (
+              <button
+                onClick={onCloseRegistration}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                <Lock size={14} />
+                Anmeldung abschließen
+              </button>
+            )}
           </div>
         </div>
 
@@ -679,6 +691,20 @@ export default function ParticipantManager({ tournamentType, participants, categ
             </select>
           )}
         </div>
+
+        {registrationClosed && (
+          <div className="flex items-center gap-2 mb-4 px-4 py-3 text-sm text-green-400 bg-green-500/5 border border-green-500/20 rounded-lg">
+            <CheckCircle2 size={14} className="shrink-0" />
+            <span className="flex-1">Anmeldung abgeschlossen — {participants.data.length} Teilnehmer registriert</span>
+            <button
+              onClick={onReopenRegistration}
+              className="flex items-center gap-1.5 text-xs text-kyokushin-text-muted hover:text-white transition-colors"
+            >
+              <Unlock size={12} />
+              Wieder öffnen
+            </button>
+          </div>
+        )}
 
         <div className="bg-kyokushin-card border border-kyokushin-border rounded-xl overflow-hidden">
           <table className="w-full text-sm">

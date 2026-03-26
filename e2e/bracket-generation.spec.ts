@@ -27,7 +27,10 @@ test.describe.serial('Bracket generation and results', () => {
     await fileInput.setInputFiles(csvPath);
     await expect(page.getByText('28 Teilnehmer registriert')).toBeVisible({ timeout: 10_000 });
 
-    await page.getByRole('button', { name: 'Kategorien' }).click();
+    await page.getByRole('button', { name: 'Anmeldung abschließen' }).click();
+    await expect(page.getByText('Anmeldung abgeschlossen')).toBeVisible({ timeout: 5_000 });
+
+    await page.getByRole('button', { name: 'Kategorien', exact: true }).click();
     await page.getByRole('button', { name: 'Auto-Kategorien' }).first().click();
     await expect(page.locator('h4.font-semibold').first()).toBeVisible({ timeout: 10_000 });
 
@@ -42,7 +45,7 @@ test.describe.serial('Bracket generation and results', () => {
   });
 
   test('navigate to bracket tab and see categories', async () => {
-    await page.getByRole('button', { name: 'Turnierbaum' }).click();
+    await page.getByRole('button', { name: 'Turnierbaum', exact: true }).click();
 
     await expect(page.getByRole('heading', { name: 'Turnierbaum' })).toBeVisible({ timeout: 5_000 });
 
@@ -85,7 +88,7 @@ test.describe.serial('Bracket generation and results', () => {
         || await page.getByText('Runde').isVisible().catch(() => false);
       expect(hasMatches).toBeTruthy();
     } else {
-      const errorMsg = page.getByText(/Mindestens 2 benötigt|Generierung nicht möglich/);
+      const errorMsg = page.getByText(/Mindestens 2 benötigt|Generierung nicht möglich|nicht konfiguriert|Kein Turnierbaum/).first();
       await expect(errorMsg).toBeVisible({ timeout: 3_000 });
     }
   });

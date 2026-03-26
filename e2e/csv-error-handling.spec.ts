@@ -144,16 +144,21 @@ test.describe.serial('CSV error handling and duplicates', () => {
     await expect(page.getByText('Mustermann, Max')).toBeVisible({ timeout: 5_000 });
   });
 
-  test('bracket generation fails without categories', async () => {
-    await page.getByRole('button', { name: 'Turnierbaum' }).click();
+  test('bracket tab shows empty state without categories', async () => {
+    await page.getByRole('button', { name: 'Teilnehmer', exact: true }).click();
+    const closeBtn = page.getByRole('button', { name: 'Anmeldung abschließen' });
+    if (await closeBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await closeBtn.click();
+      await expect(page.getByText('Anmeldung abgeschlossen')).toBeVisible({ timeout: 5_000 });
+    }
+
+    await page.getByRole('button', { name: 'Turnierbaum', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Turnierbaum' })).toBeVisible({ timeout: 5_000 });
 
     const noCategoriesMsg = page.getByText('Keine Kategorien vorhanden');
     const createHint = page.getByText(/Erstelle zuerst Kategorien/i);
-
     const hasEmptyState = await noCategoriesMsg.isVisible().catch(() => false)
       || await createHint.isVisible().catch(() => false);
-
     expect(hasEmptyState).toBeTruthy();
   });
 });

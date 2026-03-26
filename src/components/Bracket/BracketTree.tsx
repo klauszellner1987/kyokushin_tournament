@@ -1,4 +1,4 @@
-import { Trophy } from 'lucide-react';
+import { Trophy, Pencil } from 'lucide-react';
 import type { Match } from '../../types';
 import { getRoundLabel } from '../../utils/bracketGenerator';
 
@@ -8,6 +8,7 @@ interface Props {
   getName: (id: string | null) => string;
   getClub: (id: string | null) => string;
   onMatchClick?: (match: Match) => void;
+  onCorrectMatch?: (match: Match) => void;
   isWithdrawn?: (id: string | null) => boolean;
   readonly?: boolean;
   currentMatchId?: string | null;
@@ -93,6 +94,7 @@ function MatchNode({
   getName,
   getClub,
   onMatchClick,
+  onCorrectMatch,
   isWithdrawn,
   readonly,
   isCurrent,
@@ -101,6 +103,7 @@ function MatchNode({
   getName: (id: string | null) => string;
   getClub: (id: string | null) => string;
   onMatchClick?: (match: Match) => void;
+  onCorrectMatch?: (match: Match) => void;
   isWithdrawn?: (id: string | null) => boolean;
   readonly?: boolean;
   isCurrent: boolean;
@@ -109,54 +112,67 @@ function MatchNode({
   const isWalkover = match.status === 'walkover';
   const isDq = match.status === 'disqualification';
   const isCompleted = match.status === 'completed';
+  const isFinished = isCompleted || isWalkover || isDq;
   const showScore = isCompleted && !isBye;
-  const canClick = !readonly && !isCompleted && !isWalkover && !isDq && !isBye && match.fighter1Id && match.fighter2Id;
+  const canClick = !readonly && !isFinished && !isBye && match.fighter1Id && match.fighter2Id;
+  const canCorrect = !readonly && isFinished && !isBye && !!onCorrectMatch;
 
   return (
-    <div
-      className={`w-56 rounded-lg overflow-hidden border transition-all ${
-        isCurrent
-          ? 'border-kyokushin-red shadow-lg shadow-kyokushin-red/20 ring-1 ring-kyokushin-red/30'
-          : isCompleted || isWalkover || isDq
-            ? isDq ? 'border-red-500/40' : 'border-kyokushin-border/60'
-            : match.fighter1Id && match.fighter2Id
-              ? 'border-kyokushin-red/60 shadow-md shadow-kyokushin-red/10'
-              : 'border-kyokushin-border/30'
-      } ${canClick ? 'cursor-pointer hover:border-kyokushin-red hover:shadow-lg hover:shadow-kyokushin-red/20' : ''}`}
-      onClick={() => canClick && onMatchClick?.(match)}
-    >
-      <FighterSlot
-        fighterId={match.fighter1Id}
-        isWinner={match.winnerId === match.fighter1Id && match.winnerId !== null}
-        isBye={isBye && !match.fighter1Id}
-        score={match.score1}
-        getName={getName}
-        getClub={getClub}
-        isWithdrawn={isWithdrawn}
-        showScore={showScore}
-        isCurrent={isCurrent}
-      />
-      <div className="h-px bg-kyokushin-border/30" />
-      <FighterSlot
-        fighterId={match.fighter2Id}
-        isWinner={match.winnerId === match.fighter2Id && match.winnerId !== null}
-        isBye={isBye && !match.fighter2Id}
-        score={match.score2}
-        getName={getName}
-        getClub={getClub}
-        isWithdrawn={isWithdrawn}
-        showScore={showScore}
-        isCurrent={isCurrent}
-      />
-      {isWalkover && (
-        <div className="bg-amber-500/10 px-3 py-0.5 text-center">
-          <span className="text-[10px] text-amber-400 font-medium">W.O.</span>
-        </div>
-      )}
-      {isDq && (
-        <div className="bg-red-500/10 px-3 py-0.5 text-center">
-          <span className="text-[10px] text-red-400 font-medium">DSQ</span>
-        </div>
+    <div className="w-56 flex flex-col">
+      <div
+        className={`rounded-lg overflow-hidden border transition-all ${
+          isCurrent
+            ? 'border-kyokushin-red shadow-lg shadow-kyokushin-red/20 ring-1 ring-kyokushin-red/30'
+            : isFinished
+              ? isDq ? 'border-red-500/40' : 'border-kyokushin-border/60'
+              : match.fighter1Id && match.fighter2Id
+                ? 'border-kyokushin-red/60 shadow-md shadow-kyokushin-red/10'
+                : 'border-kyokushin-border/30'
+        } ${canClick ? 'cursor-pointer hover:border-kyokushin-red hover:shadow-lg hover:shadow-kyokushin-red/20' : ''}`}
+        onClick={() => { if (canClick) onMatchClick?.(match); }}
+      >
+        <FighterSlot
+          fighterId={match.fighter1Id}
+          isWinner={match.winnerId === match.fighter1Id && match.winnerId !== null}
+          isBye={isBye && !match.fighter1Id}
+          score={match.score1}
+          getName={getName}
+          getClub={getClub}
+          isWithdrawn={isWithdrawn}
+          showScore={showScore}
+          isCurrent={isCurrent}
+        />
+        <div className="h-px bg-kyokushin-border/30" />
+        <FighterSlot
+          fighterId={match.fighter2Id}
+          isWinner={match.winnerId === match.fighter2Id && match.winnerId !== null}
+          isBye={isBye && !match.fighter2Id}
+          score={match.score2}
+          getName={getName}
+          getClub={getClub}
+          isWithdrawn={isWithdrawn}
+          showScore={showScore}
+          isCurrent={isCurrent}
+        />
+        {isWalkover && (
+          <div className="bg-amber-500/10 px-3 py-0.5 text-center">
+            <span className="text-[10px] text-amber-400 font-medium">W.O.</span>
+          </div>
+        )}
+        {isDq && (
+          <div className="bg-red-500/10 px-3 py-0.5 text-center">
+            <span className="text-[10px] text-red-400 font-medium">DSQ</span>
+          </div>
+        )}
+      </div>
+      {canCorrect && (
+        <button
+          onClick={() => onCorrectMatch?.(match)}
+          className="mt-1 flex items-center justify-center gap-1.5 w-full py-1 rounded-md text-[11px] font-medium text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
+        >
+          <Pencil size={11} />
+          Korrigieren
+        </button>
       )}
     </div>
   );
@@ -168,6 +184,7 @@ export default function BracketTree({
   getName,
   getClub,
   onMatchClick,
+  onCorrectMatch,
   isWithdrawn,
   readonly,
   currentMatchId,
@@ -207,6 +224,7 @@ export default function BracketTree({
                         getName={getName}
                         getClub={getClub}
                         onMatchClick={onMatchClick}
+                        onCorrectMatch={onCorrectMatch}
                         isWithdrawn={isWithdrawn}
                         readonly={readonly}
                         isCurrent={m.id === currentMatchId}

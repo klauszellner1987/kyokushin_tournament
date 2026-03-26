@@ -16,6 +16,7 @@ export interface Tournament {
   matCount: number;
   createdAt: number;
   registrationConfirmed?: boolean;
+  registrationClosed?: boolean;
 }
 
 export type ParticipantStatus = 'active' | 'withdrawn' | 'injured' | 'disqualified';

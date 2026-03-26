@@ -149,6 +149,90 @@ export function advanceWinner(
   return { matchId: nextMatch.id, updates };
 }
 
+const FINISHED_STATUSES: Match['status'][] = ['completed', 'walkover', 'disqualification'];
+
+export function collectCascadeResets(
+  allMatches: Match[],
+  changedMatch: Match,
+): { matchId: string; updates: Partial<Match> }[] {
+  const results: { matchId: string; updates: Partial<Match> }[] = [];
+
+  const nextRound = changedMatch.round + 1;
+  const nextPosition = Math.floor(changedMatch.position / 2);
+
+  const nextMatch = allMatches.find(
+    (m) =>
+      m.fightGroupId === changedMatch.fightGroupId &&
+      m.round === nextRound &&
+      m.position === nextPosition,
+  );
+
+  if (!nextMatch) return results;
+
+  const isTopSlot = changedMatch.position % 2 === 0;
+  const slotClear: Partial<Match> = isTopSlot
+    ? { fighter1Id: null }
+    : { fighter2Id: null };
+
+  if (FINISHED_STATUSES.includes(nextMatch.status)) {
+    // Depth-first: cascade from the next match before resetting it
+    results.push(...collectCascadeResets(allMatches, nextMatch));
+
+    results.push({
+      matchId: nextMatch.id,
+      updates: {
+        ...slotClear,
+        winnerId: null,
+        score1: 0,
+        score2: 0,
+        status: 'pending' as const,
+        timerEndsAt: undefined,
+        timerPausedRemaining: undefined,
+        fightRound: undefined,
+        isExtension: undefined,
+      },
+    });
+  } else {
+    // Next match not yet finished — just clear the fighter slot
+    results.push({ matchId: nextMatch.id, updates: slotClear });
+  }
+
+  return results;
+}
+
+export function countDownstreamResets(
+  allMatches: Match[],
+  match: Match,
+): number {
+  const nextRound = match.round + 1;
+  const nextPosition = Math.floor(match.position / 2);
+  const nextMatch = allMatches.find(
+    (m) =>
+      m.fightGroupId === match.fightGroupId &&
+      m.round === nextRound &&
+      m.position === nextPosition,
+  );
+  if (!nextMatch || !FINISHED_STATUSES.includes(nextMatch.status)) return 0;
+  return 1 + countDownstreamResets(allMatches, nextMatch);
+}
+
+export function hasRunningDownstream(
+  allMatches: Match[],
+  match: Match,
+): boolean {
+  const nextRound = match.round + 1;
+  const nextPosition = Math.floor(match.position / 2);
+  const nextMatch = allMatches.find(
+    (m) =>
+      m.fightGroupId === match.fightGroupId &&
+      m.round === nextRound &&
+      m.position === nextPosition,
+  );
+  if (!nextMatch) return false;
+  if (nextMatch.status === 'running') return true;
+  return hasRunningDownstream(allMatches, nextMatch);
+}
+
 export function getRoundLabel(round: number, totalRounds: number): string {
   const roundsFromEnd = totalRounds - round;
   switch (roundsFromEnd) {

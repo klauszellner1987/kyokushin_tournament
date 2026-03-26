@@ -79,13 +79,14 @@ test.describe.serial('Tournament management', () => {
   });
 
   test('delete a tournament', async () => {
-    page.on('dialog', dialog => dialog.accept());
-
     const cards = page.locator('[class*="cursor-pointer"][class*="rounded-xl"]');
     const card = cards.filter({ hasText: 'Nordbayern Open' });
     await card.locator('button').click();
 
-    await expect(page.getByText('Nordbayern Open')).not.toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: 'Turnier löschen' })).toBeVisible({ timeout: 5_000 });
+    await page.getByRole('button', { name: 'Löschen' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Nordbayern Open' })).not.toBeVisible({ timeout: 5_000 });
     await expect(page.getByText('Bayernpokal 2026')).toBeVisible();
   });
 });

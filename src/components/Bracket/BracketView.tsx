@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Play, AlertTriangle, Trophy, ArrowLeft, Users, CheckCircle, Clock, Circle, Medal, Scale } from 'lucide-react';
 import type { Category, FightGroup, Match, Participant } from '../../types';
 import { autoAssign } from '../../utils/groupAssignment';
-import { generateSingleElimination, generateRoundRobin, advanceWinner } from '../../utils/bracketGenerator';
+import { generateSingleElimination, generateRoundRobin, advanceWinner, collectCascadeResets, countDownstreamResets, hasRunningDownstream } from '../../utils/bracketGenerator';
 import { distributeCategoriesToMats, scheduleMatchesToMats } from '../../utils/matScheduler';
 import BracketTree from './BracketTree';
 
@@ -58,6 +58,10 @@ export default function BracketView({
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [weightEditMatch, setWeightEditMatch] = useState<string | null>(null);
   const [weightValue, setWeightValue] = useState('');
+  const [correctionModal, setCorrectionModal] = useState<Match | null>(null);
+  const [corrScore1, setCorrScore1] = useState(0);
+  const [corrScore2, setCorrScore2] = useState(0);
+  const [correctionError, setCorrectionError] = useState<string | null>(null);
 
   const participantMap = new Map(participants.map((p) => [p.id, p]));
 
@@ -309,6 +313,59 @@ export default function BracketView({
     setResultModal(null);
     setScore1(0);
     setScore2(0);
+  };
+
+  const handleOpenCorrection = (match: Match) => {
+    const catMatches = getMatchesForCategory(activeCategory!);
+    if (hasRunningDownstream(catMatches, match)) {
+      setCorrectionError('Korrektur nicht möglich, solange ein Folgekampf läuft.');
+      return;
+    }
+    setCorrectionError(null);
+    setCorrectionModal(match);
+    setCorrScore1(match.score1);
+    setCorrScore2(match.score2);
+  };
+
+  const handleCorrectResult = async () => {
+    if (!correctionModal) return;
+
+    const newWinnerId =
+      corrScore1 > corrScore2 ? correctionModal.fighter1Id : correctionModal.fighter2Id;
+    const oldWinnerId = correctionModal.winnerId;
+    const winnerChanged = newWinnerId !== oldWinnerId;
+
+    await matches.update(correctionModal.id, {
+      winnerId: newWinnerId,
+      score1: corrScore1,
+      score2: corrScore2,
+      status: 'completed',
+    });
+
+    if (winnerChanged) {
+      const catMatches = getMatchesForCategory(activeCategory!);
+      const updatedMatch: Match = {
+        ...correctionModal,
+        winnerId: newWinnerId,
+        score1: corrScore1,
+        score2: corrScore2,
+        status: 'completed',
+      };
+
+      const resets = collectCascadeResets(catMatches, correctionModal);
+      for (const reset of resets) {
+        await matches.update(reset.matchId, reset.updates);
+      }
+
+      const advance = advanceWinner(catMatches, updatedMatch);
+      if (advance) {
+        await matches.update(advance.matchId, advance.updates);
+      }
+    }
+
+    setCorrectionModal(null);
+    setCorrScore1(0);
+    setCorrScore2(0);
   };
 
   const handleWeightSave = async (matchId: string) => {
@@ -638,6 +695,14 @@ export default function BracketView({
                               Ergebnis
                             </button>
                           )}
+                          {(m.status === 'completed') && (
+                            <button
+                              onClick={() => { setCorrectionModal(m); setCorrScore1(m.score1); setCorrScore2(m.score2); }}
+                              className="text-amber-400 hover:text-amber-300 text-xs font-medium transition-colors"
+                            >
+                              Korrigieren
+                            </button>
+                          )}
                         </div>
                         {weightEditMatch === m.id && (
                           <div className="flex items-center gap-1 mt-1 justify-end">
@@ -755,18 +820,31 @@ export default function BracketView({
           })()}
         </div>
       ) : (
-        <BracketTree
-          matches={matchesForCategory}
-          totalRounds={totalRounds}
-          getName={getName}
-          getClub={getClub}
-          isWithdrawn={isWithdrawn}
-          onMatchClick={(m) => {
-            setResultModal(m);
-            setScore1(0);
-            setScore2(0);
-          }}
-        />
+        <>
+          {correctionError && (
+            <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
+              <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-400">{correctionError}</p>
+              <button onClick={() => setCorrectionError(null)} className="ml-auto text-kyokushin-text-muted hover:text-white shrink-0">
+                <span className="text-lg leading-none">&times;</span>
+              </button>
+            </div>
+          )}
+
+          <BracketTree
+            matches={matchesForCategory}
+            totalRounds={totalRounds}
+            getName={getName}
+            getClub={getClub}
+            isWithdrawn={isWithdrawn}
+            onMatchClick={(m) => {
+              setResultModal(m);
+              setScore1(0);
+              setScore2(0);
+            }}
+            onCorrectMatch={handleOpenCorrection}
+          />
+        </>
       )}
 
       {/* Result Modal */}
@@ -858,6 +936,79 @@ export default function BracketView({
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Correction Modal */}
+      {correctionModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-kyokushin-card border border-kyokushin-border rounded-xl p-8 w-full max-w-md">
+            <h3 className="text-xl font-bold text-white text-center mb-2">
+              Ergebnis korrigieren
+            </h3>
+
+            {(() => {
+              const catMatches = getMatchesForCategory(activeCategory!);
+              const newWinner = corrScore1 > corrScore2 ? correctionModal.fighter1Id : corrScore2 > corrScore1 ? correctionModal.fighter2Id : null;
+              const winnerChanges = newWinner !== null && newWinner !== correctionModal.winnerId;
+              const resetCount = winnerChanges ? countDownstreamResets(catMatches, correctionModal) : 0;
+
+              return (
+                <>
+                  {winnerChanges && resetCount > 0 && (
+                    <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-start gap-2">
+                      <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                      <p className="text-xs text-amber-300">
+                        Der Gewinner ändert sich. {resetCount} Folgekampf{resetCount > 1 ? 'e werden' : ' wird'} zurückgesetzt und muss neu ausgetragen werden.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between gap-4 mb-8">
+                    <div className="text-center flex-1">
+                      <p className="text-lg font-bold text-white">{getName(correctionModal.fighter1Id)}</p>
+                      <p className="text-xs text-kyokushin-text-muted">{getClub(correctionModal.fighter1Id)}</p>
+                      <input
+                        type="number"
+                        min="0"
+                        value={corrScore1}
+                        onChange={(e) => setCorrScore1(parseInt(e.target.value) || 0)}
+                        className="w-20 mt-3 mx-auto block bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-center text-2xl font-bold focus:outline-none focus:border-kyokushin-red"
+                      />
+                    </div>
+                    <span className="text-2xl font-black text-kyokushin-red">VS</span>
+                    <div className="text-center flex-1">
+                      <p className="text-lg font-bold text-white">{getName(correctionModal.fighter2Id)}</p>
+                      <p className="text-xs text-kyokushin-text-muted">{getClub(correctionModal.fighter2Id)}</p>
+                      <input
+                        type="number"
+                        min="0"
+                        value={corrScore2}
+                        onChange={(e) => setCorrScore2(parseInt(e.target.value) || 0)}
+                        className="w-20 mt-3 mx-auto block bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-center text-2xl font-bold focus:outline-none focus:border-kyokushin-red"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleCorrectResult}
+                      disabled={corrScore1 === corrScore2}
+                      className={`flex-1 ${winnerChanges && resetCount > 0 ? 'bg-amber-600 hover:bg-amber-700' : 'bg-kyokushin-red hover:bg-kyokushin-red-dark'} disabled:opacity-50 text-white py-3 rounded-lg font-bold transition-colors`}
+                    >
+                      {winnerChanges && resetCount > 0 ? 'Korrigieren & Zurücksetzen' : 'Korrigieren'}
+                    </button>
+                    <button
+                      onClick={() => setCorrectionModal(null)}
+                      className="bg-kyokushin-border hover:bg-kyokushin-card-hover text-white px-6 py-3 rounded-lg transition-colors"
+                    >
+                      Abbrechen
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

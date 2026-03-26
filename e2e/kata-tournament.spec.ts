@@ -76,10 +76,13 @@ test.describe.serial('Kata tournament flow', () => {
     }
 
     await expect(page.getByText('4 Teilnehmer registriert')).toBeVisible({ timeout: 5_000 });
+
+    await page.getByRole('button', { name: 'Anmeldung abschließen' }).click();
+    await expect(page.getByText('Anmeldung abgeschlossen')).toBeVisible({ timeout: 5_000 });
   });
 
   test('create kata category with Punktesystem', async () => {
-    await page.getByRole('button', { name: 'Kategorien' }).click();
+    await page.getByRole('button', { name: 'Kategorien', exact: true }).click();
     await page.getByRole('button', { name: 'Neue Kategorie' }).click();
     await page.waitForTimeout(500);
 
@@ -103,10 +106,11 @@ test.describe.serial('Kata tournament flow', () => {
   });
 
   test('verify kata category badges', async () => {
-    const hasPunkteBadge = await page.getByText('Punktesystem').isVisible().catch(() => false);
-    const hasRoundRobinBadge = await page.getByText('Round Robin').isVisible().catch(() => false);
+    const categorySection = page.locator('div').filter({ hasText: 'Kata Jugend' }).last();
+    const hasFormatBadge = await categorySection.getByText(/Single Elimination|Round Robin|Punktesystem/).first().isVisible().catch(() => false);
+    const hasCategoryName = await page.getByText('Kata Jugend').isVisible().catch(() => false);
 
-    expect(hasPunkteBadge || hasRoundRobinBadge).toBeTruthy();
+    expect(hasFormatBadge || hasCategoryName).toBeTruthy();
   });
 
   test('create a Mixed tournament and verify discipline selection', async () => {

@@ -42,10 +42,13 @@ async function createTournamentWithFighters(
   }
 
   await expect(page.getByText('2 Teilnehmer registriert')).toBeVisible({ timeout: 5_000 });
+
+  await page.getByRole('button', { name: 'Anmeldung abschließen' }).click();
+  await expect(page.getByText('Anmeldung abgeschlossen')).toBeVisible({ timeout: 5_000 });
 }
 
 async function createCategoryWithFullFlow(page: Page, categoryName: string) {
-  await page.getByRole('button', { name: 'Kategorien' }).click();
+  await page.getByRole('button', { name: 'Kategorien', exact: true }).click();
   await page.getByRole('button', { name: 'Neue Kategorie' }).click();
   await page.waitForTimeout(500);
 
@@ -81,7 +84,7 @@ async function confirmAndGenerateBracket(page: Page, categoryName: string) {
   await expect(page.getByRole('button', { name: 'Sichtkontrolle' })).toBeVisible({ timeout: 10_000 });
 
   // Generate bracket
-  await page.getByRole('button', { name: 'Turnierbaum' }).click();
+  await page.getByRole('button', { name: 'Turnierbaum', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Turnierbaum' })).toBeVisible({ timeout: 5_000 });
 
   // Click on the target category
@@ -109,7 +112,7 @@ async function confirmAndGenerateBracket(page: Page, categoryName: string) {
 }
 
 async function navigateToFightControl(page: Page) {
-  await page.getByRole('button', { name: 'Kampfleitung' }).click();
+  await page.getByRole('button', { name: 'Kampfleitung', exact: true }).click();
   await page.waitForTimeout(1_000);
 }
 

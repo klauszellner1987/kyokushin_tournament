@@ -73,4 +73,7 @@ export default defineConfig({
     tailwindcss(),
     getPwaPlugin(),
   ],
+  test: {
+    exclude: ['e2e/**', 'node_modules/**'],
+  },
 })

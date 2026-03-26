@@ -28,11 +28,6 @@ function ProtectedRoutes() {
 
   return (
     <Routes>
-      {/* Live views have their own fullscreen layout */}
-      <Route path="/live/:id" element={<LiveView />} />
-      <Route path="/live/:id/mat/:matNr" element={<LiveView />} />
-
-      {/* Main app layout */}
       <Route element={<AppLayout />}>
         <Route path="/" element={<TournamentList />} />
         <Route path="/tournament/:id" element={<TournamentDetailKeyed />} />
@@ -45,7 +40,11 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <ProtectedRoutes />
+        <Routes>
+          <Route path="/live/:id" element={<LiveView />} />
+          <Route path="/live/:id/mat/:matNr" element={<LiveView />} />
+          <Route path="/*" element={<ProtectedRoutes />} />
+        </Routes>
       </BrowserRouter>
     </AuthProvider>
   );

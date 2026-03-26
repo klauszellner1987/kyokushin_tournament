@@ -30,7 +30,10 @@ test.describe.serial('Live view', () => {
     await fileInput.setInputFiles(csvPath);
     await expect(page.getByText('28 Teilnehmer registriert')).toBeVisible({ timeout: 10_000 });
 
-    await page.getByRole('button', { name: 'Kategorien' }).click();
+    await page.getByRole('button', { name: 'Anmeldung abschließen' }).click();
+    await expect(page.getByText('Anmeldung abgeschlossen')).toBeVisible({ timeout: 5_000 });
+
+    await page.getByRole('button', { name: 'Kategorien', exact: true }).click();
     await page.getByRole('button', { name: 'Auto-Kategorien' }).first().click();
     await expect(page.locator('h4.font-semibold').first()).toBeVisible({ timeout: 10_000 });
 
@@ -39,7 +42,7 @@ test.describe.serial('Live view', () => {
     await page.getByRole('button', { name: 'Bestätigen' }).click();
     await expect(page.getByRole('button', { name: 'Sichtkontrolle' })).toBeVisible({ timeout: 10_000 });
 
-    await page.getByRole('button', { name: 'Turnierbaum' }).click();
+    await page.getByRole('button', { name: 'Turnierbaum', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Turnierbaum' })).toBeVisible({ timeout: 5_000 });
 
     const categoryCards = page.locator('[class*="cursor-pointer"]').filter({ has: page.locator('h4') });

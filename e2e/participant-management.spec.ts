@@ -98,11 +98,12 @@ test.describe.serial('Participant manual management', () => {
   });
 
   test('delete a participant', async () => {
-    page.on('dialog', dialog => dialog.accept());
-
     const row = page.locator('tr', { hasText: 'Huber, Maria' });
     const deleteBtn = row.locator('button').last();
     await deleteBtn.click();
+
+    await expect(page.getByRole('heading', { name: 'Teilnehmer löschen' })).toBeVisible({ timeout: 5_000 });
+    await page.getByRole('button', { name: 'Löschen' }).click();
 
     await expect(page.getByText('1 Teilnehmer registriert')).toBeVisible({ timeout: 5_000 });
     await expect(page.getByText('Huber, Maria')).not.toBeVisible();

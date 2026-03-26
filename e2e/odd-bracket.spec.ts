@@ -87,8 +87,11 @@ test.describe.serial('Odd bracket: 5 fighters complete tournament', () => {
     }
     await expect(page.getByText('5 Teilnehmer registriert')).toBeVisible({ timeout: 5_000 });
 
+    await page.getByRole('button', { name: 'Anmeldung abschließen' }).click();
+    await expect(page.getByText('Anmeldung abgeschlossen')).toBeVisible({ timeout: 5_000 });
+
     // Create kumite category with short fight duration
-    await page.getByRole('button', { name: 'Kategorien' }).click();
+    await page.getByRole('button', { name: 'Kategorien', exact: true }).click();
     await page.getByRole('button', { name: 'Neue Kategorie' }).click();
     await page.waitForTimeout(500);
 
@@ -115,7 +118,7 @@ test.describe.serial('Odd bracket: 5 fighters complete tournament', () => {
   });
 
   test('bracket generates successfully with 5 fighters', async () => {
-    await page.getByRole('button', { name: 'Turnierbaum' }).click();
+    await page.getByRole('button', { name: 'Turnierbaum', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Turnierbaum' })).toBeVisible({ timeout: 5_000 });
 
     // Click on our category
@@ -171,7 +174,7 @@ test.describe.serial('Odd bracket: 5 fighters complete tournament', () => {
   });
 
   test('play all matches via Kampfleitung until champion', async () => {
-    await page.getByRole('button', { name: 'Kampfleitung' }).click();
+    await page.getByRole('button', { name: 'Kampfleitung', exact: true }).click();
     await page.waitForTimeout(1_000);
 
     // 5 fighters: 1 R1 real match + 2 semis + 1 final = 4 real matches
@@ -254,7 +257,10 @@ test.describe.serial('Odd bracket: 3 fighters complete tournament', () => {
     }
     await expect(page.getByText('3 Teilnehmer registriert')).toBeVisible({ timeout: 5_000 });
 
-    await page.getByRole('button', { name: 'Kategorien' }).click();
+    await page.getByRole('button', { name: 'Anmeldung abschließen' }).click();
+    await expect(page.getByText('Anmeldung abgeschlossen')).toBeVisible({ timeout: 5_000 });
+
+    await page.getByRole('button', { name: 'Kategorien', exact: true }).click();
     await page.getByRole('button', { name: 'Neue Kategorie' }).click();
     await page.waitForTimeout(500);
 
@@ -279,7 +285,7 @@ test.describe.serial('Odd bracket: 3 fighters complete tournament', () => {
   });
 
   test('bracket generates with 3 fighters and shows BYE', async () => {
-    await page.getByRole('button', { name: 'Turnierbaum' }).click();
+    await page.getByRole('button', { name: 'Turnierbaum', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Turnierbaum' })).toBeVisible({ timeout: 5_000 });
 
     const categoryCards = page.locator('[class*="cursor-pointer"]').filter({ has: page.locator('h4') });
@@ -310,7 +316,7 @@ test.describe.serial('Odd bracket: 3 fighters complete tournament', () => {
   });
 
   test('play all matches (2 total) to determine champion', async () => {
-    await page.getByRole('button', { name: 'Kampfleitung' }).click();
+    await page.getByRole('button', { name: 'Kampfleitung', exact: true }).click();
     await page.waitForTimeout(1_000);
 
     // 3 fighters: 1 real R1 match + 1 final = 2 total matches
