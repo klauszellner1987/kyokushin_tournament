@@ -347,21 +347,39 @@ export default function ParticipantManager({ tournamentType, participants, categ
     return [...names].sort();
   }, [categoryMap]);
 
-  const filtered = participants.data.filter((p) => {
-    const matchesSearch =
-      !search ||
-      `${p.firstName} ${p.lastName} ${p.club}`
-        .toLowerCase()
-        .includes(search.toLowerCase());
-    const matchesBelt = !filterBelt || p.beltGrade === filterBelt;
-    const matchesGender = !filterGender || p.gender === filterGender;
-    const matchesClub = !filterClub || p.club === filterClub;
-    const matchesDiscipline = !filterDiscipline || p.discipline.includes(filterDiscipline as Discipline);
-    const matchesCat = !filterCategory || (categoryMap.get(p.id) ?? []).includes(filterCategory);
-    const pStatus = p.status ?? 'active';
-    const matchesStatus = !filterStatus || pStatus === filterStatus;
-    return matchesSearch && matchesBelt && matchesGender && matchesClub && matchesDiscipline && matchesCat && matchesStatus;
-  });
+  const filtered = useMemo(() => {
+    const out = participants.data.filter((p) => {
+      const matchesSearch =
+        !search ||
+        `${p.firstName} ${p.lastName} ${p.club}`
+          .toLowerCase()
+          .includes(search.toLowerCase());
+      const matchesBelt = !filterBelt || p.beltGrade === filterBelt;
+      const matchesGender = !filterGender || p.gender === filterGender;
+      const matchesClub = !filterClub || p.club === filterClub;
+      const matchesDiscipline = !filterDiscipline || p.discipline.includes(filterDiscipline as Discipline);
+      const matchesCat = !filterCategory || (categoryMap.get(p.id) ?? []).includes(filterCategory);
+      const pStatus = p.status ?? 'active';
+      const matchesStatus = !filterStatus || pStatus === filterStatus;
+      return matchesSearch && matchesBelt && matchesGender && matchesClub && matchesDiscipline && matchesCat && matchesStatus;
+    });
+    out.sort((a, b) => {
+      const last = a.lastName.localeCompare(b.lastName, 'de', { sensitivity: 'base' });
+      if (last !== 0) return last;
+      return a.firstName.localeCompare(b.firstName, 'de', { sensitivity: 'base' });
+    });
+    return out;
+  }, [
+    participants.data,
+    search,
+    filterBelt,
+    filterGender,
+    filterClub,
+    filterDiscipline,
+    filterCategory,
+    filterStatus,
+    categoryMap,
+  ]);
 
   const getAge = (birthDate: string) => {
     if (!birthDate) return '-';
