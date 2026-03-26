@@ -28,19 +28,62 @@ test.describe.serial('CSV error handling and duplicates', () => {
     await context.close();
   });
 
-  test('invalid CSV file does not add participants', async () => {
+  test('invalid CSV file shows header error', async () => {
     const csvPath = path.resolve(__dirname, 'fixtures', 'invalid.csv');
     const fileInput = page.locator('input[type="file"][accept=".csv"]');
     await fileInput.setInputFiles(csvPath);
 
-    await page.waitForTimeout(2_000);
+    await expect(page.getByText('CSV-Import fehlgeschlagen')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText('Ungültiger CSV-Header.')).toBeVisible();
 
-    const hasParticipants = await page.getByText(/\d+ Teilnehmer registriert/).isVisible().catch(() => false);
-    if (hasParticipants) {
-      await expect(page.getByText('0 Teilnehmer registriert')).toBeVisible();
-    } else {
-      await expect(page.getByText('Keine Teilnehmer gefunden')).toBeVisible();
-    }
+    // Close the error panel
+    const closeBtn = page.locator('button[title="Schließen"]');
+    await closeBtn.click();
+    await expect(page.getByText('CSV-Import fehlgeschlagen')).not.toBeVisible();
+  });
+
+  test('wrong header CSV shows header error with expected format', async () => {
+    const csvPath = path.resolve(__dirname, 'fixtures', 'wrong-header.csv');
+    const fileInput = page.locator('input[type="file"][accept=".csv"]');
+    await fileInput.setInputFiles(csvPath);
+
+    await expect(page.getByText('CSV-Import fehlgeschlagen')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText('Ungültiger CSV-Header.')).toBeVisible();
+    await expect(page.getByText(/Erwartet:.*Vorname;Nachname/)).toBeVisible();
+
+    const closeBtn = page.locator('button[title="Schließen"]');
+    await closeBtn.click();
+  });
+
+  test('wrong column count CSV shows row errors', async () => {
+    const csvPath = path.resolve(__dirname, 'fixtures', 'wrong-column-count.csv');
+    const fileInput = page.locator('input[type="file"][accept=".csv"]');
+    await fileInput.setInputFiles(csvPath);
+
+    await expect(page.getByText('CSV-Import fehlgeschlagen')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/Zeile 2:.*3 Spalten gefunden/)).toBeVisible();
+    await expect(page.getByText(/Zeile 3:.*9 Spalten gefunden/)).toBeVisible();
+
+    const closeBtn = page.locator('button[title="Schließen"]');
+    await closeBtn.click();
+  });
+
+  test('invalid field values CSV shows validation errors', async () => {
+    const csvPath = path.resolve(__dirname, 'fixtures', 'invalid-fields.csv');
+    const fileInput = page.locator('input[type="file"][accept=".csv"]');
+    await fileInput.setInputFiles(csvPath);
+
+    await expect(page.getByText('CSV-Import fehlgeschlagen')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/Vorname fehlt/)).toBeVisible();
+    await expect(page.getByText(/Nachname fehlt/)).toBeVisible();
+    await expect(page.getByText(/Geburtsdatum.*ungültig/)).toBeVisible();
+    await expect(page.getByText(/Gewicht.*keine gültige Zahl/)).toBeVisible();
+    await expect(page.getByText(/Gürtelgrad.*ungültig/)).toBeVisible();
+    await expect(page.getByText(/Geschlecht.*ungültig/)).toBeVisible();
+    await expect(page.getByText(/Disziplin.*ungültig/)).toBeVisible();
+
+    const closeBtn = page.locator('button[title="Schließen"]');
+    await closeBtn.click();
   });
 
   test('valid CSV imports participants successfully', async () => {
@@ -48,7 +91,7 @@ test.describe.serial('CSV error handling and duplicates', () => {
     const fileInput = page.locator('input[type="file"][accept=".csv"]');
     await fileInput.setInputFiles(csvPath);
 
-    await expect(page.getByText('8 Teilnehmer registriert')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('28 Teilnehmer registriert')).toBeVisible({ timeout: 10_000 });
   });
 
   test('duplicate CSV triggers duplicate modal', async () => {

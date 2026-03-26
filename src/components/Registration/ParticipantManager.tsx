@@ -1,11 +1,39 @@
 import { useState, useRef, useMemo } from 'react';
-import { Plus, Upload, Pencil, Trash2, Search, X, AlertTriangle } from 'lucide-react';
+import { Plus, Upload, Pencil, Trash2, Search, X, AlertTriangle, FileWarning } from 'lucide-react';
 import type { Participant, Category, Discipline, BeltGrade, TournamentType, Match, ParticipantStatus } from '../../types';
 import { BELT_GRADES, BELT_COLORS } from '../../types';
 import DateInput, { parseDateDE, formatDateDE } from '../ui/DateInput';
 import { autoAssign } from '../../utils/groupAssignment';
 import CsvImportModal, { type ParsedEntry, type DuplicateEntry } from './CsvImportModal';
 import ConfirmDialog from '../ui/ConfirmDialog';
+
+const CSV_EXPECTED_HEADERS = [
+  'vorname', 'nachname', 'verein', 'geburtsdatum',
+  'gewicht', 'guertelgrad', 'geschlecht', 'disziplin',
+];
+
+const BELT_GRADES_LOWER = new Map<string, BeltGrade>(
+  BELT_GRADES.map((b) => [b.toLowerCase(), b]),
+);
+
+function normalizeCsvHeader(h: string): string {
+  return h.toLowerCase().replace(/ü/g, 'ue').trim();
+}
+
+function isValidDateDE(value: string): boolean {
+  if (!/^\d{2}\.\d{2}\.\d{4}$/.test(value)) return false;
+  const [day, month, year] = value.split('.').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+function parseCsvDiscipline(value: string): Discipline[] | null {
+  const normalized = value.toLowerCase().replace(/\s/g, '');
+  if (normalized === 'kumite') return ['kumite'];
+  if (normalized === 'kata') return ['kata'];
+  if (normalized === 'kumite,kata' || normalized === 'kata,kumite') return ['kumite', 'kata'];
+  return null;
+}
 
 interface Props {
   tournamentId: string;
@@ -55,6 +83,7 @@ export default function ParticipantManager({ tournamentType, participants, categ
   const [showImportModal, setShowImportModal] = useState(false);
   const [withdrawTarget, setWithdrawTarget] = useState<Participant | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Participant | null>(null);
+  const [csvErrors, setCsvErrors] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { assignments } = useMemo(
@@ -116,18 +145,107 @@ export default function ParticipantManager({ tournamentType, participants, categ
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setCsvErrors([]);
+
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
       const lines = text.split('\n').filter((l) => l.trim());
-      const header = lines[0].toLowerCase();
-      const hasHeader =
-        header.includes('vorname') ||
-        header.includes('nachname') ||
-        header.includes('firstname');
 
-      const dataLines = hasHeader ? lines.slice(1) : lines;
+      if (lines.length === 0) {
+        setCsvErrors(['Die CSV-Datei ist leer.']);
+        return;
+      }
 
+      // --- Header validation ---
+      const headerCols = lines[0].split(';').map(normalizeCsvHeader);
+      const headerValid =
+        headerCols.length === CSV_EXPECTED_HEADERS.length &&
+        CSV_EXPECTED_HEADERS.every((h, i) => headerCols[i] === h);
+
+      if (!headerValid) {
+        setCsvErrors([
+          'Ungültiger CSV-Header.',
+          `Erwartet: Vorname;Nachname;Verein;Geburtsdatum;Gewicht;Gürtelgrad;Geschlecht;Disziplin`,
+          `Gefunden: ${lines[0]}`,
+        ]);
+        return;
+      }
+
+      const dataLines = lines.slice(1);
+      if (dataLines.length === 0) {
+        setCsvErrors(['Keine Datenzeilen in der CSV-Datei gefunden.']);
+        return;
+      }
+
+      // --- Row-level validation ---
+      const errors: string[] = [];
+      const validEntries: ParsedEntry[] = [];
+
+      for (let i = 0; i < dataLines.length; i++) {
+        const lineNum = i + 2; // +1 for header, +1 for 1-based
+        const cols = dataLines[i].split(';').map((c) => c.trim());
+
+        if (cols.length !== 8) {
+          errors.push(`Zeile ${lineNum}: ${cols.length} Spalten gefunden, 8 erwartet.`);
+          continue;
+        }
+
+        const rowErrors: string[] = [];
+
+        if (!cols[0]) rowErrors.push('Vorname fehlt');
+        if (!cols[1]) rowErrors.push('Nachname fehlt');
+        if (!cols[2]) rowErrors.push('Verein fehlt');
+
+        if (!cols[3]) {
+          rowErrors.push('Geburtsdatum fehlt');
+        } else if (!isValidDateDE(cols[3])) {
+          rowErrors.push(`Geburtsdatum '${cols[3]}' ist ungültig (TT.MM.JJJJ erwartet)`);
+        }
+
+        const weight = parseFloat(cols[4]);
+        if (!cols[4] || isNaN(weight) || weight <= 0) {
+          rowErrors.push(`Gewicht '${cols[4]}' ist keine gültige Zahl > 0`);
+        }
+
+        const belt = BELT_GRADES_LOWER.get(cols[5].toLowerCase());
+        if (!belt) {
+          rowErrors.push(`Gürtelgrad '${cols[5]}' ist ungültig`);
+        }
+
+        const genderUpper = cols[6].toUpperCase();
+        if (genderUpper !== 'M' && genderUpper !== 'W') {
+          rowErrors.push(`Geschlecht '${cols[6]}' ist ungültig (M oder W erwartet)`);
+        }
+
+        const discipline = parseCsvDiscipline(cols[7] || '');
+        if (!discipline) {
+          rowErrors.push(`Disziplin '${cols[7]}' ist ungültig (kumite, kata oder kumite,kata erwartet)`);
+        }
+
+        if (rowErrors.length > 0) {
+          errors.push(`Zeile ${lineNum}: ${rowErrors.join('; ')}`);
+        } else {
+          validEntries.push({
+            firstName: cols[0],
+            lastName: cols[1],
+            club: cols[2],
+            birthDate: parseDateDE(cols[3]),
+            weight,
+            beltGrade: belt!,
+            gender: genderUpper as 'M' | 'W',
+            discipline: discipline!,
+            categoryIds: [],
+          });
+        }
+      }
+
+      if (errors.length > 0) {
+        setCsvErrors(errors);
+        return;
+      }
+
+      // --- Duplicate detection ---
       const existingKeys = new Map<string, Participant>();
       for (const p of participants.data) {
         existingKeys.set(participantKey(p.firstName, p.lastName, p.birthDate, p.club), p);
@@ -136,26 +254,7 @@ export default function ParticipantManager({ tournamentType, participants, categ
       const newEntries: ParsedEntry[] = [];
       const duplicates: DuplicateEntry[] = [];
 
-      for (const line of dataLines) {
-        const cols = line.split(';').map((c) => c.trim());
-        if (cols.length < 4) continue;
-
-        const parsed: ParsedEntry = {
-          firstName: cols[0] || '',
-          lastName: cols[1] || '',
-          club: cols[2] || '',
-          birthDate: parseDateDE(cols[3] || ''),
-          weight: parseFloat(cols[4]) || 0,
-          beltGrade: (cols[5] as BeltGrade) || '10. Kyu',
-          gender: (cols[6] === 'W' ? 'W' : 'M') as 'M' | 'W',
-          discipline: cols[7]?.includes('kata')
-            ? cols[7].includes('kumite')
-              ? ['kumite', 'kata']
-              : ['kata']
-            : ['kumite'],
-          categoryIds: [],
-        };
-
+      for (const parsed of validEntries) {
         const key = participantKey(parsed.firstName, parsed.lastName, parsed.birthDate, parsed.club);
         const existing = existingKeys.get(key);
 
@@ -481,6 +580,29 @@ export default function ParticipantManager({ tournamentType, participants, categ
             </button>
           </div>
         </div>
+
+        {csvErrors.length > 0 && (
+          <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <FileWarning size={20} className="text-red-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h4 className="text-sm font-bold text-red-400 mb-2">CSV-Import fehlgeschlagen</h4>
+                <ul className="space-y-1 max-h-48 overflow-y-auto text-xs text-red-300 list-disc list-inside">
+                  {csvErrors.map((err, i) => (
+                    <li key={i}>{err}</li>
+                  ))}
+                </ul>
+              </div>
+              <button
+                onClick={() => setCsvErrors([])}
+                className="text-red-400 hover:text-red-300 transition-colors"
+                title="Schließen"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-3 mb-4">
           <div className="relative flex-1 min-w-[200px]">
