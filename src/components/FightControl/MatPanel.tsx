@@ -75,6 +75,8 @@ export default function MatPanel({
     ? categories.find((c) => c.id === group.categoryId)
     : null;
 
+  const isKata = category?.discipline === 'kata';
+
   const { isExpired } = useTimer(currentMatch?.timerEndsAt, currentMatch?.timerPausedRemaining);
 
   const isRunning = currentMatch?.status === 'running';
@@ -84,11 +86,11 @@ export default function MatPanel({
   const currentRound = getCurrentFightRound(currentMatch);
 
   useEffect(() => {
-    if (isExpired && currentMatch && timerExpiredHandled !== currentMatch.id) {
+    if (!isKata && isExpired && currentMatch && timerExpiredHandled !== currentMatch.id) {
       setTimerExpiredHandled(currentMatch.id);
       setShowDecisionModal(true);
     }
-  }, [isExpired, currentMatch, timerExpiredHandled]);
+  }, [isKata, isExpired, currentMatch, timerExpiredHandled]);
 
   const getName = (id: string | null) => {
     if (!id) return 'Noch offen';
@@ -106,12 +108,19 @@ export default function MatPanel({
 
   const handleStartFight = async () => {
     if (!currentMatch || !category) return;
-    const duration = getDurationForRound(currentRound, category);
-    await onUpdateMatch(currentMatch.id, {
-      status: 'running',
-      timerEndsAt: Date.now() + duration * 1000,
-      timerPausedRemaining: undefined,
-    });
+    if (isKata) {
+      await onUpdateMatch(currentMatch.id, { status: 'running' });
+      setScore1(0);
+      setScore2(0);
+      setShowResultModal(true);
+    } else {
+      const duration = getDurationForRound(currentRound, category);
+      await onUpdateMatch(currentMatch.id, {
+        status: 'running',
+        timerEndsAt: Date.now() + duration * 1000,
+        timerPausedRemaining: undefined,
+      });
+    }
     setTimerExpiredHandled(null);
   };
 
@@ -367,44 +376,46 @@ export default function MatPanel({
   };
 
   const renderDrawOptions = () => {
-    if (currentRound === 1 && canGoToRound2) {
-      return (
-        <button
-          onClick={() => handleStartNextRound(2)}
-          className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
-        >
-          Unentschieden — Runde 2 starten
-        </button>
-      );
-    }
-
-    if (currentRound === 2) {
-      if (hasWeightDecision) {
+    if (!isKata) {
+      if (currentRound === 1 && canGoToRound2) {
         return (
           <button
-            onClick={() => { setShowResultModal(false); setShowWeightDecision(true); }}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+            onClick={() => handleStartNextRound(2)}
+            className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
           >
-            Unentschieden — Gewichtsentscheid
+            Unentschieden — Runde 2 starten
           </button>
         );
       }
-      if (canGoToRound3) {
-        return (
-          <button
-            onClick={() => handleStartNextRound(3)}
-            className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
-          >
-            Unentschieden — Runde 3 starten (Pflichtentscheid)
-          </button>
-        );
+
+      if (currentRound === 2) {
+        if (hasWeightDecision) {
+          return (
+            <button
+              onClick={() => { setShowResultModal(false); setShowWeightDecision(true); }}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+            >
+              Unentschieden — Gewichtsentscheid
+            </button>
+          );
+        }
+        if (canGoToRound3) {
+          return (
+            <button
+              onClick={() => handleStartNextRound(3)}
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+            >
+              Unentschieden — Runde 3 starten (Pflichtentscheid)
+            </button>
+          );
+        }
       }
     }
 
     return (
       <div className="space-y-2">
         <p className="text-xs text-kyokushin-text-muted text-center">
-          Unentschieden — {isFinalRound ? 'Pflichtentscheid' : 'Richterentscheid'}
+          {isKata ? 'Gleichstand — Richterentscheid' : `Unentschieden — ${isFinalRound ? 'Pflichtentscheid' : 'Richterentscheid'}`}
         </p>
         <div className="flex gap-2">
           <button
@@ -704,8 +715,8 @@ export default function MatPanel({
               </div>
             </div>
 
-            {/* Timer */}
-            {isRunning && (
+            {/* Timer (nur Kumite) */}
+            {!isKata && isRunning && (
               <div>
                 <FightTimer
                   timerEndsAt={currentMatch.timerEndsAt}
@@ -740,11 +751,11 @@ export default function MatPanel({
                   className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold text-sm transition-colors"
                 >
                   <Play size={18} />
-                  Kampf starten
+                  {isKata ? 'Bewertung starten' : 'Kampf starten'}
                 </button>
               )}
 
-              {isTimerActive && (
+              {!isKata && isTimerActive && (
                 <>
                   <button
                     onClick={handlePause}
@@ -763,7 +774,7 @@ export default function MatPanel({
                 </>
               )}
 
-              {isPaused && (
+              {!isKata && isPaused && (
                 <>
                   <button
                     onClick={handleResume}
@@ -783,8 +794,8 @@ export default function MatPanel({
               )}
             </div>
 
-            {/* Duration info when not yet started */}
-            {currentMatch.status === 'pending' && category && (
+            {/* Duration info when not yet started (nur Kumite) */}
+            {!isKata && currentMatch.status === 'pending' && category && (
               <div className="flex items-center justify-center gap-2 text-xs text-kyokushin-text-muted">
                 <Timer size={12} />
                 <span>
