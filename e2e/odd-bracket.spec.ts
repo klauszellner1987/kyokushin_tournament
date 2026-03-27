@@ -39,9 +39,8 @@ async function completeCurrentMatch(page: Page) {
   await page.getByRole('button', { name: 'Ergebnis eintragen' }).first().click();
   await page.waitForTimeout(500);
 
-  // Enter 1:0 result (target the first visible score input)
-  const scoreInputs = page.locator('input[type="number"]');
-  await scoreInputs.first().fill('1');
+  // Enter 1:0 via TouchScorePicker (kein type=number mehr)
+  await page.getByRole('button', { name: 'Ein Punkt mehr' }).first().click();
 
   // Confirm
   const confirmBtn = page.getByRole('button', { name: 'Bestätigen' }).first();
