@@ -10,9 +10,11 @@ permissions:
   pages: write
   id-token: write
 
+# Kein Abbruch bei erneutem Push: sonst werden lange E2E-Läufe ständig als
+# "Cancelled" beendet, obwohl nichts faul ist (z. B. schneller Follow-up-Commit).
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   test:
