@@ -1,0 +1,151 @@
+Vorname;Nachname;Verein;Geburtsdatum;Gewicht;Gürtelgrad;Geschlecht;Disziplin
+Anna;Mueller;SHINKYO Dojo Berlin;01.01.2018;28;10. Kyu;W;kumite
+Noah;Becker;Budokan Muenchen;02.02.2017;29;9. Kyu;M;kumite
+Lisa;Neumann;Kyokushin Hamburg;03.03.2016;30;8. Kyu;W;kumite
+Finn;Braun;Dojo am Rhein Koeln;04.04.2015;31;7. Kyu;M;kumite
+Hannah;Krueger;Karate Frankfurt;05.05.2014;46;6. Kyu;W;kata
+Tom;Meyer;Seishin Dojo Stuttgart;06.06.2013;47;5. Kyu;M;kata
+Sophie;Wolf;Tsunami Dresden;07.07.2012;48;4. Kyu;W;kumite,kata
+David;Vogel;Kanku Leipzig;08.08.2011;49;3. Kyu;M;kumite,kata
+Nina;Peters;Osaka Wesel;09.09.2010;60;2. Kyu;W;kumite,kata
+Sven;Fischer;Sunabe Hannover;10.10.2009;77;1. Kyu;M;kumite,kata
+Lea;Richter;Shin Dojo Nuernberg;11.11.2008;62;1. Dan;W;kumite
+Erik;Hartmann;Kanreikan Essen;12.12.2007;79;2. Dan;M;kumite
+Laura;Baumann;Kokoro Bonn;13.01.2006;64;3. Dan;W;kumite
+Tim;Schmidt;Seido Karlsruhe;14.02.2005;81;10. Kyu;M;kumite
+Katha;Hoffmann;Hombu Muenster;15.03.2004;66;9. Kyu;W;kata
+Max;Lang;Dojo Mitte Dortmund;16.04.2003;83;8. Kyu;M;kata
+Julie;Frank;Bushido Wiesbaden;17.05.2002;68;7. Kyu;W;kumite,kata
+Felix;Herrmann;Shinken Aachen;18.06.2001;85;6. Kyu;M;kumite,kata
+Finja;Wagner;Karate Dojo Mainz;19.07.2000;70;5. Kyu;W;kumite,kata
+Moritz;Schulz;Kyokushkai Freiburg;20.08.1999;87;4. Kyu;M;kumite,kata
+Zoe;Zimmermann;Seiken Trier;21.09.1998;72;3. Kyu;W;kumite
+Robin;Werner;Dojo Nord Kiel;22.10.1997;89;2. Kyu;M;kumite
+Lia;Weber;Honbu Luebeck;23.11.1996;74;1. Kyu;W;kumite
+Aaron;Klein;SHINKYO Dojo Berlin;24.12.1995;91;1. Dan;M;kumite
+Jana;Krause;Budokan Muenchen;25.01.1994;76;2. Dan;W;kata
+Lukas;Schuster;Kyokushin Hamburg;26.02.1993;93;3. Dan;M;kata
+Mia;Schneider;Dojo am Rhein Koeln;27.03.1992;78;10. Kyu;W;kumite,kata
+Ben;Koch;Karate Frankfurt;28.04.1991;95;9. Kyu;M;kumite,kata
+Sara;Berger;Seishin Dojo Stuttgart;01.05.1990;52;8. Kyu;W;kumite,kata
+Jonas;Lorenz;Tsunami Dresden;02.06.1989;97;7. Kyu;M;kumite,kata
+Julia;Mueller-1;Kanku Leipzig;03.07.1988;54;6. Kyu;W;kumite
+Paul;Becker-1;Osaka Wesel;04.08.1987;99;5. Kyu;M;kumite
+Lena;Neumann-1;Sunabe Hannover;05.09.1986;56;4. Kyu;W;kumite
+Marcel;Braun-1;Shin Dojo Nuernberg;06.10.1985;101;3. Kyu;M;kumite
+Emma;Krueger-1;Kanreikan Essen;07.11.1984;58;2. Kyu;W;kata
+Kai;Meyer-1;Kokoro Bonn;08.12.1983;68;1. Kyu;M;kata
+Marie;Wolf-1;Seido Karlsruhe;09.01.1982;60;1. Dan;W;kumite,kata
+Jan;Vogel-1;Hombu Muenster;10.02.1981;70;2. Dan;M;kumite,kata
+Sarah;Peters-1;Dojo Mitte Dortmund;11.03.1980;62;3. Dan;W;kumite,kata
+Niklas;Fischer-1;Bushido Wiesbaden;12.04.1979;72;10. Kyu;M;kumite,kata
+Clara;Richter-1;Shinken Aachen;13.05.1978;64;9. Kyu;W;kumite
+Leon;Hartmann-1;Karate Dojo Mainz;14.06.1977;74;8. Kyu;M;kumite
+Nele;Baumann-1;Kyokushkai Freiburg;15.07.1976;66;7. Kyu;W;kumite
+Julian;Schmidt-1;Seiken Trier;16.08.1975;76;6. Kyu;M;kumite
+Mila;Hoffmann-1;Dojo Nord Kiel;17.09.1974;68;5. Kyu;W;kata
+Simon;Lang-1;Honbu Luebeck;18.10.1973;78;4. Kyu;M;kata
+Amelie;Frank-1;SHINKYO Dojo Berlin;19.11.1972;70;3. Kyu;W;kumite,kata
+Jannis;Herrmann-1;Budokan Muenchen;20.12.1971;80;2. Kyu;M;kumite,kata
+Paula;Wagner-1;Kyokushin Hamburg;21.01.1970;72;1. Kyu;W;kumite,kata
+Phil;Schulz-1;Dojo am Rhein Koeln;22.02.1969;82;1. Dan;M;kumite,kata
+Anna;Zimmermann-1;Karate Frankfurt;23.03.1968;74;2. Dan;W;kumite
+Noah;Werner-1;Seishin Dojo Stuttgart;24.04.1967;84;3. Dan;M;kumite
+Lisa;Weber-1;Tsunami Dresden;25.05.2018;44;10. Kyu;W;kumite
+Finn;Klein-1;Kanku Leipzig;26.06.2017;45;9. Kyu;M;kumite
+Hannah;Krause-1;Osaka Wesel;27.07.2016;28;8. Kyu;W;kata
+Tom;Schuster-1;Sunabe Hannover;28.08.2015;29;7. Kyu;M;kata
+Sophie;Schneider-1;Shin Dojo Nuernberg;01.09.2014;48;6. Kyu;W;kumite,kata
+David;Koch-1;Kanreikan Essen;02.10.2013;49;5. Kyu;M;kumite,kata
+Nina;Berger-1;Kokoro Bonn;03.11.2012;50;4. Kyu;W;kumite,kata
+Sven;Lorenz-1;Seido Karlsruhe;04.12.2011;51;3. Kyu;M;kumite,kata
+Lea;Mueller-2;Hombu Muenster;05.01.2010;56;2. Kyu;W;kumite
+Erik;Becker-2;Dojo Mitte Dortmund;06.02.2009;94;1. Kyu;M;kumite
+Laura;Neumann-2;Bushido Wiesbaden;07.03.2008;58;1. Dan;W;kumite
+Tim;Braun-2;Shinken Aachen;08.04.2007;96;2. Dan;M;kumite
+Katha;Krueger-2;Karate Dojo Mainz;09.05.2006;60;3. Dan;W;kata
+Max;Meyer-2;Kyokushkai Freiburg;10.06.2005;98;10. Kyu;M;kata
+Julie;Wolf-2;Seiken Trier;11.07.2004;62;9. Kyu;W;kumite,kata
+Felix;Vogel-2;Dojo Nord Kiel;12.08.2003;100;8. Kyu;M;kumite,kata
+Finja;Peters-2;Honbu Luebeck;13.09.2002;64;7. Kyu;W;kumite,kata
+Moritz;Fischer-2;SHINKYO Dojo Berlin;14.10.2001;102;6. Kyu;M;kumite,kata
+Zoe;Richter-2;Budokan Muenchen;15.11.2000;66;5. Kyu;W;kumite
+Robin;Hartmann-2;Kyokushin Hamburg;16.12.1999;69;4. Kyu;M;kumite
+Lia;Baumann-2;Dojo am Rhein Koeln;17.01.1998;68;3. Kyu;W;kumite
+Aaron;Schmidt-2;Karate Frankfurt;18.02.1997;71;2. Kyu;M;kumite
+Jana;Hoffmann-2;Seishin Dojo Stuttgart;19.03.1996;70;1. Kyu;W;kata
+Lukas;Lang-2;Tsunami Dresden;20.04.1995;73;1. Dan;M;kata
+Mia;Frank-2;Kanku Leipzig;21.05.1994;72;2. Dan;W;kumite,kata
+Ben;Herrmann-2;Osaka Wesel;22.06.1993;75;3. Dan;M;kumite,kata
+Sara;Wagner-2;Sunabe Hannover;23.07.1992;74;10. Kyu;W;kumite,kata
+Jonas;Schulz-2;Shin Dojo Nuernberg;24.08.1991;77;9. Kyu;M;kumite,kata
+Julia;Zimmermann-2;Kanreikan Essen;25.09.1990;76;8. Kyu;W;kumite
+Paul;Werner-2;Kokoro Bonn;26.10.1989;79;7. Kyu;M;kumite
+Lena;Weber-2;Seido Karlsruhe;27.11.1988;78;6. Kyu;W;kumite
+Marcel;Klein-2;Hombu Muenster;28.12.1987;81;5. Kyu;M;kumite
+Emma;Krause-2;Dojo Mitte Dortmund;01.01.1986;52;4. Kyu;W;kata
+Kai;Schuster-2;Bushido Wiesbaden;02.02.1985;83;3. Kyu;M;kata
+Marie;Schneider-2;Shinken Aachen;03.03.1984;54;2. Kyu;W;kumite,kata
+Jan;Koch-2;Karate Dojo Mainz;04.04.1983;85;1. Kyu;M;kumite,kata
+Sarah;Berger-2;Kyokushkai Freiburg;05.05.1982;56;1. Dan;W;kumite,kata
+Niklas;Lorenz-2;Seiken Trier;06.06.1981;87;2. Dan;M;kumite,kata
+Clara;Mueller-3;Dojo Nord Kiel;07.07.1980;58;3. Dan;W;kumite
+Leon;Becker-3;Honbu Luebeck;08.08.1979;89;10. Kyu;M;kumite
+Nele;Neumann-3;SHINKYO Dojo Berlin;09.09.1978;60;9. Kyu;W;kumite
+Julian;Braun-3;Budokan Muenchen;10.10.1977;91;8. Kyu;M;kumite
+Mila;Krueger-3;Kyokushin Hamburg;11.11.1976;62;7. Kyu;W;kata
+Simon;Meyer-3;Dojo am Rhein Koeln;12.12.1975;93;6. Kyu;M;kata
+Amelie;Wolf-3;Karate Frankfurt;13.01.1974;64;5. Kyu;W;kumite,kata
+Jannis;Vogel-3;Seishin Dojo Stuttgart;14.02.1973;95;4. Kyu;M;kumite,kata
+Paula;Peters-3;Tsunami Dresden;15.03.1972;66;3. Kyu;W;kumite,kata
+Phil;Fischer-3;Kanku Leipzig;16.04.1971;97;2. Kyu;M;kumite,kata
+Anna;Richter-3;Osaka Wesel;17.05.1970;68;1. Kyu;W;kumite
+Noah;Hartmann-3;Sunabe Hannover;18.06.1969;99;1. Dan;M;kumite
+Lisa;Baumann-3;Shin Dojo Nuernberg;19.07.1968;70;2. Dan;W;kumite
+Finn;Schmidt-3;Kanreikan Essen;20.08.1967;101;3. Dan;M;kumite
+Hannah;Hoffmann-3;Kokoro Bonn;21.09.2018;42;10. Kyu;W;kata
+Tom;Lang-3;Seido Karlsruhe;22.10.2017;43;9. Kyu;M;kata
+Sophie;Frank-3;Hombu Muenster;23.11.2016;44;8. Kyu;W;kumite,kata
+David;Herrmann-3;Dojo Mitte Dortmund;24.12.2015;45;7. Kyu;M;kumite,kata
+Nina;Wagner-3;Bushido Wiesbaden;25.01.2014;50;6. Kyu;W;kumite,kata
+Sven;Schulz-3;Shinken Aachen;26.02.2013;51;5. Kyu;M;kumite,kata
+Lea;Zimmermann-3;Karate Dojo Mainz;27.03.2012;52;4. Kyu;W;kumite
+Erik;Werner-3;Kyokushkai Freiburg;28.04.2011;53;3. Kyu;M;kumite
+Laura;Weber-3;Seiken Trier;01.05.2010;52;2. Kyu;W;kumite
+Tim;Klein-3;Dojo Nord Kiel;02.06.2009;76;1. Kyu;M;kumite
+Katha;Krause-3;Honbu Luebeck;03.07.2008;54;1. Dan;W;kata
+Max;Schuster-3;SHINKYO Dojo Berlin;04.08.2007;78;2. Dan;M;kata
+Julie;Schneider-3;Budokan Muenchen;05.09.2006;56;3. Dan;W;kumite,kata
+Felix;Koch-3;Kyokushin Hamburg;06.10.2005;80;10. Kyu;M;kumite,kata
+Finja;Berger-3;Dojo am Rhein Koeln;07.11.2004;58;9. Kyu;W;kumite,kata
+Moritz;Lorenz-3;Karate Frankfurt;08.12.2003;82;8. Kyu;M;kumite,kata
+Zoe;Mueller-4;Seishin Dojo Stuttgart;09.01.2002;60;7. Kyu;W;kumite
+Robin;Becker-4;Tsunami Dresden;10.02.2001;84;6. Kyu;M;kumite
+Lia;Neumann-4;Kanku Leipzig;11.03.2000;62;5. Kyu;W;kumite
+Aaron;Braun-4;Osaka Wesel;12.04.1999;86;4. Kyu;M;kumite
+Jana;Krueger-4;Sunabe Hannover;13.05.1998;64;3. Kyu;W;kata
+Lukas;Meyer-4;Shin Dojo Nuernberg;14.06.1997;88;2. Kyu;M;kata
+Mia;Wolf-4;Kanreikan Essen;15.07.1996;66;1. Kyu;W;kumite,kata
+Ben;Vogel-4;Kokoro Bonn;16.08.1995;90;1. Dan;M;kumite,kata
+Sara;Peters-4;Seido Karlsruhe;17.09.1994;68;2. Dan;W;kumite,kata
+Jonas;Fischer-4;Hombu Muenster;18.10.1993;92;3. Dan;M;kumite,kata
+Julia;Richter-4;Dojo Mitte Dortmund;19.11.1992;70;10. Kyu;W;kumite
+Paul;Hartmann-4;Bushido Wiesbaden;20.12.1991;94;9. Kyu;M;kumite
+Lena;Baumann-4;Shinken Aachen;21.01.1990;72;8. Kyu;W;kumite
+Marcel;Schmidt-4;Karate Dojo Mainz;22.02.1989;96;7. Kyu;M;kumite
+Emma;Hoffmann-4;Kyokushkai Freiburg;23.03.1988;74;6. Kyu;W;kata
+Kai;Lang-4;Seiken Trier;24.04.1987;98;5. Kyu;M;kata
+Marie;Frank-4;Dojo Nord Kiel;25.05.1986;76;4. Kyu;W;kumite,kata
+Jan;Herrmann-4;Honbu Luebeck;26.06.1985;100;3. Kyu;M;kumite,kata
+Sarah;Wagner-4;SHINKYO Dojo Berlin;27.07.1984;78;2. Kyu;W;kumite,kata
+Niklas;Schulz-4;Budokan Muenchen;28.08.1983;102;1. Kyu;M;kumite,kata
+Clara;Zimmermann-4;Kyokushin Hamburg;01.09.1982;52;1. Dan;W;kumite
+Leon;Werner-4;Dojo am Rhein Koeln;02.10.1981;69;2. Dan;M;kumite
+Nele;Weber-4;Karate Frankfurt;03.11.1980;54;3. Dan;W;kumite
+Julian;Klein-4;Seishin Dojo Stuttgart;04.12.1979;71;10. Kyu;M;kumite
+Mila;Krause-4;Tsunami Dresden;05.01.1978;56;9. Kyu;W;kata
+Simon;Schuster-4;Kanku Leipzig;06.02.1977;73;8. Kyu;M;kata
+Amelie;Schneider-4;Osaka Wesel;07.03.1976;58;7. Kyu;W;kumite,kata
+Jannis;Koch-4;Sunabe Hannover;08.04.1975;75;6. Kyu;M;kumite,kata
+Paula;Berger-4;Shin Dojo Nuernberg;09.05.1974;60;5. Kyu;W;kumite,kata
+Phil;Lorenz-4;Kanreikan Essen;10.06.1973;77;4. Kyu;M;kumite,kata
