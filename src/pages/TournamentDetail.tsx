@@ -8,6 +8,7 @@ import CategoryManager from '../components/Categories/CategoryManager';
 import BracketView from '../components/Bracket/BracketView';
 import FightControl from '../components/FightControl/FightControl';
 import { computeWalkoverUpdates } from '../utils/walkover';
+import { countFinishedScheduledFights } from '../utils/matchProgress';
 import { useState, useCallback, useMemo } from 'react';
 
 type Tab = 'participants' | 'categories' | 'bracket' | 'control' | 'live';
@@ -149,7 +150,7 @@ export default function TournamentDetail() {
     { label: 'Kämpfe', value: matches.data.length, color: 'border-kyokushin-red' },
     {
       label: 'Abgeschlossen',
-      value: matches.data.filter((m) => m.status === 'completed').length,
+      value: countFinishedScheduledFights(matches.data),
       color: 'border-green-500',
     },
   ];

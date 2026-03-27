@@ -5,6 +5,7 @@ import { autoAssign } from '../../utils/groupAssignment';
 import { generateSingleElimination, generateRoundRobin, advanceWinner, collectCascadeResets, countDownstreamResets, hasRunningDownstream } from '../../utils/bracketGenerator';
 import { distributeCategoriesToMats, scheduleMatchesToMats } from '../../utils/matScheduler';
 import BracketTree from './BracketTree';
+import TouchScorePicker from '../ui/TouchScorePicker';
 
 interface Props {
   tournamentId: string;
@@ -894,29 +895,21 @@ export default function BracketView({
               </>
             ) : (
               <>
-                <div className="flex items-center justify-between gap-4 mb-8">
-                  <div className="text-center flex-1">
+                <div className="flex items-start justify-between gap-4 mb-8">
+                  <div className="text-center flex-1 min-w-0">
                     <p className="text-lg font-bold text-white">{getName(resultModal.fighter1Id)}</p>
                     <p className="text-xs text-kyokushin-text-muted">{getClub(resultModal.fighter1Id)}</p>
-                    <input
-                      type="number"
-                      min="0"
-                      value={score1}
-                      onChange={(e) => setScore1(parseInt(e.target.value) || 0)}
-                      className="w-20 mt-3 mx-auto block bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-center text-2xl font-bold focus:outline-none focus:border-kyokushin-red"
-                    />
+                    <div className="mt-3">
+                      <TouchScorePicker value={score1} onChange={setScore1} accent="red" />
+                    </div>
                   </div>
-                  <span className="text-2xl font-black text-kyokushin-red">VS</span>
-                  <div className="text-center flex-1">
+                  <span className="text-2xl font-black text-kyokushin-red shrink-0 self-center">VS</span>
+                  <div className="text-center flex-1 min-w-0">
                     <p className="text-lg font-bold text-white">{getName(resultModal.fighter2Id)}</p>
                     <p className="text-xs text-kyokushin-text-muted">{getClub(resultModal.fighter2Id)}</p>
-                    <input
-                      type="number"
-                      min="0"
-                      value={score2}
-                      onChange={(e) => setScore2(parseInt(e.target.value) || 0)}
-                      className="w-20 mt-3 mx-auto block bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-center text-2xl font-bold focus:outline-none focus:border-kyokushin-red"
-                    />
+                    <div className="mt-3">
+                      <TouchScorePicker value={score2} onChange={setScore2} accent="blue" />
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-3">
@@ -965,29 +958,21 @@ export default function BracketView({
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between gap-4 mb-8">
-                    <div className="text-center flex-1">
+                  <div className="flex items-start justify-between gap-4 mb-8">
+                    <div className="text-center flex-1 min-w-0">
                       <p className="text-lg font-bold text-white">{getName(correctionModal.fighter1Id)}</p>
                       <p className="text-xs text-kyokushin-text-muted">{getClub(correctionModal.fighter1Id)}</p>
-                      <input
-                        type="number"
-                        min="0"
-                        value={corrScore1}
-                        onChange={(e) => setCorrScore1(parseInt(e.target.value) || 0)}
-                        className="w-20 mt-3 mx-auto block bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-center text-2xl font-bold focus:outline-none focus:border-kyokushin-red"
-                      />
+                      <div className="mt-3">
+                        <TouchScorePicker value={corrScore1} onChange={setCorrScore1} accent="red" />
+                      </div>
                     </div>
-                    <span className="text-2xl font-black text-kyokushin-red">VS</span>
-                    <div className="text-center flex-1">
+                    <span className="text-2xl font-black text-kyokushin-red shrink-0 self-center">VS</span>
+                    <div className="text-center flex-1 min-w-0">
                       <p className="text-lg font-bold text-white">{getName(correctionModal.fighter2Id)}</p>
                       <p className="text-xs text-kyokushin-text-muted">{getClub(correctionModal.fighter2Id)}</p>
-                      <input
-                        type="number"
-                        min="0"
-                        value={corrScore2}
-                        onChange={(e) => setCorrScore2(parseInt(e.target.value) || 0)}
-                        className="w-20 mt-3 mx-auto block bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-center text-2xl font-bold focus:outline-none focus:border-kyokushin-red"
-                      />
+                      <div className="mt-3">
+                        <TouchScorePicker value={corrScore2} onChange={setCorrScore2} accent="blue" />
+                      </div>
                     </div>
                   </div>
 

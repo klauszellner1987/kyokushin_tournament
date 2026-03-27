@@ -5,6 +5,7 @@ import { advanceWinner } from '../../utils/bracketGenerator';
 import { useTimer } from '../../hooks/useTimer';
 import FightTimer from './FightTimer';
 import BracketTree from '../Bracket/BracketTree';
+import TouchScorePicker from '../ui/TouchScorePicker';
 
 interface Props {
   matNumber: number;
@@ -603,29 +604,21 @@ export default function MatPanel({
                 </>
               ) : (
                 <>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-center flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="text-center flex-1 min-w-0">
                       <p className="text-sm font-bold text-white">{getName(currentMatch.fighter1Id)}</p>
                       <p className="text-[10px] text-kyokushin-text-muted">{getClub(currentMatch.fighter1Id)}</p>
-                      <input
-                        type="number"
-                        min="0"
-                        value={score1}
-                        onChange={(e) => setScore1(parseInt(e.target.value) || 0)}
-                        className="w-16 mt-2 mx-auto block bg-kyokushin-bg border border-kyokushin-border rounded-lg px-2 py-1.5 text-white text-center text-xl font-bold focus:outline-none focus:border-kyokushin-red"
-                      />
+                      <div className="mt-2">
+                        <TouchScorePicker value={score1} onChange={setScore1} accent="red" size="compact" />
+                      </div>
                     </div>
-                    <span className="text-xl font-black text-kyokushin-red shrink-0">VS</span>
-                    <div className="text-center flex-1">
+                    <span className="text-xl font-black text-kyokushin-red shrink-0 self-center">VS</span>
+                    <div className="text-center flex-1 min-w-0">
                       <p className="text-sm font-bold text-white">{getName(currentMatch.fighter2Id)}</p>
                       <p className="text-[10px] text-kyokushin-text-muted">{getClub(currentMatch.fighter2Id)}</p>
-                      <input
-                        type="number"
-                        min="0"
-                        value={score2}
-                        onChange={(e) => setScore2(parseInt(e.target.value) || 0)}
-                        className="w-16 mt-2 mx-auto block bg-kyokushin-bg border border-kyokushin-border rounded-lg px-2 py-1.5 text-white text-center text-xl font-bold focus:outline-none focus:border-kyokushin-red"
-                      />
+                      <div className="mt-2">
+                        <TouchScorePicker value={score2} onChange={setScore2} accent="blue" size="compact" />
+                      </div>
                     </div>
                   </div>
                   <div className="flex flex-col gap-2">

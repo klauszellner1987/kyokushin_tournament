@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Radio } from 'lucide-react';
 import type { Category, FightGroup, Match, Participant } from '../../types';
 import { getMatOverview } from '../../utils/matScheduler';
+import { countFinishedScheduledFights, countScheduledFights } from '../../utils/matchProgress';
 import MatPanel from './MatPanel';
 
 interface Props {
@@ -56,7 +57,7 @@ export default function FightControl({
         <div>
           <h3 className="text-lg font-semibold text-white">Kampfleitung</h3>
           <p className="text-sm text-kyokushin-text-muted">
-            {matCount} {matCount === 1 ? 'Matte' : 'Matten'} · {matches.data.filter((m) => m.status === 'completed').length}/{matches.data.filter((m) => m.status !== 'bye').length} Kämpfe abgeschlossen
+            {matCount} {matCount === 1 ? 'Matte' : 'Matten'} · {countFinishedScheduledFights(matches.data)}/{countScheduledFights(matches.data)} Kämpfe abgeschlossen
           </p>
         </div>
       </div>

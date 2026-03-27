@@ -1,4 +1,5 @@
 import type { Match, Category, FightGroup } from '../types';
+import { isFightFinished, isScheduledFightForProgress } from './matchProgress';
 
 export interface MatAssignment {
   categoryId: string;
@@ -152,6 +153,7 @@ export function getMatOverview(
   return Array.from({ length: matCount }, (_, i) => {
     const matNumber = i + 1;
     const matMatches = matches.filter((m) => m.matNumber === matNumber);
+    const matScheduled = matMatches.filter(isScheduledFightForProgress);
 
     const runningMatch = matMatches.find(
       (m) => m.status === 'running' && m.fighter1Id && m.fighter2Id,
@@ -173,8 +175,8 @@ export function getMatOverview(
       next: next ?? null,
       lastCompleted: completedMatches[0] ?? null,
       recentCompleted: completedMatches.slice(0, 3),
-      completed: matMatches.filter((m) => m.status === 'completed' || m.status === 'bye' || m.status === 'walkover' || m.status === 'disqualification').length,
-      total: matMatches.length,
+      completed: matScheduled.filter((m) => isFightFinished(m)).length,
+      total: matScheduled.length,
     };
   });
 }
