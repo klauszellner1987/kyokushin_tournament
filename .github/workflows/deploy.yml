@@ -28,11 +28,10 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps --no-audit --no-fund
+        run: npm install --legacy-peer-deps --no-audit --no-fund
 
       - name: Run unit tests
-        run: |
-          npx vitest run 2>&1 | tee /tmp/vitest.log || { echo "### Unit Test Fehler" >> $GITHUB_STEP_SUMMARY; tail -60 /tmp/vitest.log >> $GITHUB_STEP_SUMMARY; exit 1; }
+        run: npx vitest run
         env:
           VITE_TESTING_MODE: "true"
 
@@ -65,7 +64,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps --no-audit --no-fund
+        run: npm install --legacy-peer-deps --no-audit --no-fund
 
       - name: Build
         run: npx vite build
