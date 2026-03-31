@@ -396,6 +396,18 @@ export default function ParticipantManager({ tournamentType, participants, categ
       {/* Form */}
       <div className="lg:col-span-1">
         <div className="bg-kyokushin-card border border-kyokushin-border rounded-xl p-6">
+          {registrationClosed && !editId ? (
+            <div className="text-center py-4">
+              <Lock size={24} className="mx-auto mb-2 text-green-400" />
+              <p className="text-sm text-kyokushin-text-muted">
+                Anmeldung gesperrt
+              </p>
+              <p className="text-xs text-kyokushin-text-muted mt-1">
+                Zum Hinzufügen von Teilnehmern die Anmeldung wieder öffnen.
+              </p>
+            </div>
+          ) : (
+          <>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">
               {editId ? 'Teilnehmer bearbeiten' : 'Neuer Teilnehmer'}
@@ -579,6 +591,8 @@ export default function ParticipantManager({ tournamentType, participants, categ
               Teilnehmer hinzufügen
             </button>
           )}
+          </>
+          )}
         </div>
       </div>
 
@@ -592,13 +606,15 @@ export default function ParticipantManager({ tournamentType, participants, categ
           </h3>
           <div className="flex gap-2">
             <input type="file" ref={fileInputRef} accept=".csv" onChange={handleCsvImport} className="hidden" />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 bg-kyokushin-card border border-kyokushin-border hover:border-kyokushin-red text-white px-4 py-2 rounded-lg text-sm transition-colors"
-            >
-              <Upload size={14} />
-              CSV Import
-            </button>
+            {!registrationClosed && (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 bg-kyokushin-card border border-kyokushin-border hover:border-kyokushin-red text-white px-4 py-2 rounded-lg text-sm transition-colors"
+              >
+                <Upload size={14} />
+                CSV Import
+              </button>
+            )}
             {!registrationClosed && participants.data.length >= 2 && (
               <button
                 onClick={onCloseRegistration}
@@ -713,10 +729,17 @@ export default function ParticipantManager({ tournamentType, participants, categ
         {registrationClosed && (
           <div className="flex items-center gap-2 mb-4 px-4 py-3 text-sm text-green-400 bg-green-500/5 border border-green-500/20 rounded-lg">
             <CheckCircle2 size={14} className="shrink-0" />
-            <span className="flex-1">Anmeldung abgeschlossen — {participants.data.length} Teilnehmer registriert</span>
+            <span className="flex-1">
+              Anmeldung abgeschlossen — {participants.data.length} Teilnehmer registriert
+              {registrationConfirmed && (
+                <span className="block text-xs text-kyokushin-text-muted mt-0.5">
+                  Wiedereröffnung erfordert eine erneute Sichtkontrolle
+                </span>
+              )}
+            </span>
             <button
               onClick={onReopenRegistration}
-              className="flex items-center gap-1.5 text-xs text-kyokushin-text-muted hover:text-white transition-colors"
+              className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 transition-colors"
             >
               <Unlock size={12} />
               Wieder öffnen

@@ -88,7 +88,7 @@ export default function TournamentDetail() {
   }, [updateTournament]);
 
   const reopenRegistration = useCallback(async () => {
-    await updateTournament({ registrationClosed: false });
+    await updateTournament({ registrationClosed: false, registrationConfirmed: false });
   }, [updateTournament]);
 
   const withdrawParticipant = useCallback(async (participantId: string, status: ParticipantStatus) => {
