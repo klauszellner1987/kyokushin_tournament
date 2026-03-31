@@ -27,15 +27,8 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies (without PWA plugin)
-        run: |
-          node -e "
-            const pkg = require('./package.json');
-            delete pkg.dependencies['vite-plugin-pwa'];
-            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
-          "
-          rm package-lock.json
-          npm install --no-audit --no-fund
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
 
       - name: Run unit tests
         run: npx vitest run
@@ -70,15 +63,8 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies (without PWA plugin)
-        run: |
-          node -e "
-            const pkg = require('./package.json');
-            delete pkg.dependencies['vite-plugin-pwa'];
-            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));
-          "
-          rm package-lock.json
-          npm install --no-audit --no-fund
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
 
       - name: Build
         run: npx vite build

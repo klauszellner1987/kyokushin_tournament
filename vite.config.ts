@@ -2,11 +2,9 @@ import { defineConfig, type PluginOption } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-const isCI = !!process.env.CI;
 const base = process.env.GITHUB_PAGES ? '/kyokushin_tournament/' : '/';
 
 async function getPwaPlugin(): Promise<PluginOption[]> {
-  if (isCI) return [];
   const { VitePWA } = await import('vite-plugin-pwa');
   return [VitePWA({
     registerType: 'autoUpdate',
