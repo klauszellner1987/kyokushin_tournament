@@ -77,7 +77,12 @@ jobs:
           }
 
       - name: Build
-        run: npx vite build
+        run: |
+          npx vite build 2>&1 | tee /tmp/build.log || {
+            echo "### Build Fehler" >> $GITHUB_STEP_SUMMARY
+            cat /tmp/build.log >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
         env:
           GITHUB_PAGES: "true"
 
