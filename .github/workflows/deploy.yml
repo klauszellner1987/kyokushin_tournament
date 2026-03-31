@@ -69,7 +69,12 @@ jobs:
           node-version: 22
 
       - name: Install dependencies (mit PWA fuer Service Worker)
-        run: npm install --legacy-peer-deps --no-audit --no-fund
+        run: |
+          npm install --legacy-peer-deps --no-audit --no-fund 2>&1 | tee /tmp/install.log || {
+            echo "### npm install Fehler" >> $GITHUB_STEP_SUMMARY
+            cat /tmp/install.log >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
 
       - name: Build
         run: npx vite build
