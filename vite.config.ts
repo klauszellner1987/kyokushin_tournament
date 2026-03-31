@@ -6,7 +6,8 @@ const base = process.env.GITHUB_PAGES ? '/kyokushin_tournament/' : '/';
 
 async function getPwaPlugin(): Promise<PluginOption[]> {
   if (process.env.VITEST) return [];
-  const { VitePWA } = await import('vite-plugin-pwa');
+  try {
+    const { VitePWA } = await import('vite-plugin-pwa');
   return [VitePWA({
     registerType: 'autoUpdate',
     includeAssets: ['Kanku_Kyokushin.svg.png', 'icons.svg'],
@@ -63,6 +64,9 @@ async function getPwaPlugin(): Promise<PluginOption[]> {
       ],
     },
   })];
+  } catch {
+    return [];
+  }
 }
 
 export default defineConfig({
