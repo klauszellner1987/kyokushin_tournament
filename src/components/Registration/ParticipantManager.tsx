@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
-import { Plus, Upload, Pencil, Trash2, Search, X, AlertTriangle, FileWarning, Lock, Unlock, CheckCircle2 } from 'lucide-react';
+import { Plus, Upload, Download, Pencil, Trash2, Search, X, AlertTriangle, FileWarning, Lock, Unlock, CheckCircle2 } from 'lucide-react';
 import type { Participant, Category, Discipline, BeltGrade, TournamentType, Match, ParticipantStatus } from '../../types';
 import { BELT_GRADES, BELT_COLORS } from '../../types';
 import DateInput from '../ui/DateInput';
@@ -89,6 +89,40 @@ export default function ParticipantManager({ tournamentType, participants, categ
   const [deleteTarget, setDeleteTarget] = useState<Participant | null>(null);
   const [csvErrors, setCsvErrors] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCsvExport = () => {
+    if (participants.data.length === 0) {
+      alert("Es gibt keine Teilnehmer zum Exportieren.");
+      return;
+    }
+
+    const headers = ['vorname', 'nachname', 'verein', 'geburtsdatum', 'gewicht', 'guertelgrad', 'geschlecht', 'disziplin'];
+    
+    const rows = participants.data.map((p) => [
+      p.firstName,
+      p.lastName,
+      p.club,
+      p.birthDate,
+      p.weight,
+      p.beltGrade,
+      p.gender,
+      p.discipline
+    ]);
+
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(';'))
+    ].join('\n');
+
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Teilnehmer_Export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const { assignments } = useMemo(
     () => autoAssign(participants.data, categories, registrationConfirmed),
@@ -619,10 +653,20 @@ export default function ParticipantManager({ tournamentType, participants, categ
           </h3>
           <div className="flex gap-2">
             <input type="file" ref={fileInputRef} accept=".csv" onChange={handleCsvImport} className="hidden" />
+            {participants.data.length > 0 && (
+              <button
+                onClick={handleCsvExport}
+                className="flex items-center gap-2 bg-kyokushin-card border border-kyokushin-border hover:border-kyokushin-gold text-white px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer"
+                title="Teilnehmerliste als CSV exportieren"
+              >
+                <Download size={14} />
+                CSV Export
+              </button>
+            )}
             {!registrationClosed && (
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 bg-kyokushin-card border border-kyokushin-border hover:border-kyokushin-red text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                className="flex items-center gap-2 bg-kyokushin-card border border-kyokushin-border hover:border-kyokushin-red text-white px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer"
               >
                 <Upload size={14} />
                 CSV Import

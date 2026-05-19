@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useParams, Link } from 'react-router';
-import { Users, FolderTree, Swords, Monitor, ArrowLeft, Grid3X3, Radio, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Users, FolderTree, Swords, Monitor, ArrowLeft, Grid3X3, Radio, ArrowRight, CheckCircle2, Download } from 'lucide-react';
 import { useTournamentData } from '../hooks/useTournament';
 import { useTokens } from '../hooks/useTokens';
 import { useAuth } from '../contexts/AuthContext';
@@ -110,6 +110,117 @@ export default function TournamentDetail() {
       await matches.update(u.matchId, u.updates);
     }
   }, [participants, matches]);
+
+  const handleResultsExport = useCallback(() => {
+    if (!tournament || matches.data.length === 0) {
+      alert("Es gibt keine Kämpfe zum Exportieren.");
+      return;
+    }
+
+    const participantMap = new Map(participants.data.map(p => [p.id, `${p.firstName} ${p.lastName} (${p.club})`]));
+    const fightGroupMap = new Map(fightGroups.data.map(g => [g.id, g.categoryId]));
+    const categoryMap = new Map(categories.data.map(c => [c.id, c.name]));
+
+    // Section 1: Platzierungen (Siegerehrung)
+    const placementHeaders = ['Kategorie', 'Disziplin', 'Sieger / Platz 1'];
+    const placementRows: string[][] = [];
+
+    for (const cat of categories.data) {
+      const catGroups = fightGroups.data.filter(g => g.categoryId === cat.id);
+      const catMatches = matches.data.filter(m => catGroups.some(g => g.id === m.fightGroupId));
+      const realMatches = catMatches.filter(m => m.status !== 'bye');
+      
+      let championName = 'Noch offen';
+      const allDone = realMatches.length > 0 && realMatches.every(m => m.status === 'completed' || m.status === 'walkover' || m.status === 'disqualification');
+      
+      if (allDone) {
+        if (cat.tournamentFormat === 'round_robin' && (cat.kataSystem ?? 'points') !== 'flag') {
+          const winsMap = new Map<string, { wins: number; diff: number }>();
+          for (const m of realMatches) {
+            for (const fId of [m.fighter1Id, m.fighter2Id]) {
+              if (fId && !winsMap.has(fId)) winsMap.set(fId, { wins: 0, diff: 0 });
+            }
+            if (m.winnerId) {
+              const w = winsMap.get(m.winnerId);
+              if (w) w.wins++;
+            }
+            if (m.fighter1Id) { const s = winsMap.get(m.fighter1Id); if (s) s.diff += m.score1 - m.score2; }
+            if (m.fighter2Id) { const s = winsMap.get(m.fighter2Id); if (s) s.diff += m.score2 - m.score1; }
+          }
+          const sorted = Array.from(winsMap.entries()).sort((a, b) => b[1].wins - a[1].wins || b[1].diff - a[1].diff);
+          if (sorted.length > 0) {
+            championName = participantMap.get(sorted[0][0]) || 'Unbekannt';
+          }
+        } else {
+          const maxRound = Math.max(...catMatches.map(m => m.round), 0);
+          const finalMatch = catMatches.find(m => m.round === maxRound);
+          if (finalMatch?.winnerId) {
+            championName = participantMap.get(finalMatch.winnerId) || 'Unbekannt';
+          }
+        }
+      }
+      placementRows.push([
+        cat.name,
+        cat.discipline === 'kumite' ? 'Kumite' : 'Kata',
+        championName
+      ]);
+    }
+
+    // Section 2: Detaillierte Kampfergebnisse (Protokoll)
+    const headers = ['Kategorie', 'Runde', 'Kämpfer 1', 'Kämpfer 2', 'Status', 'Gewinner', 'Punkte K1', 'Punkte K2'];
+    
+    const sortedMatches = [...matches.data].sort((a, b) => {
+      const catIdA = fightGroupMap.get(a.fightGroupId) || '';
+      const catIdB = fightGroupMap.get(b.fightGroupId) || '';
+      const catA = categoryMap.get(catIdA) || '';
+      const catB = categoryMap.get(catIdB) || '';
+      return catA.localeCompare(catB) || a.round - b.round;
+    });
+
+    const rows = sortedMatches.map((m) => {
+      const catId = fightGroupMap.get(m.fightGroupId) || '';
+      const catName = categoryMap.get(catId) || 'Unbekannt';
+      const f1Name = participantMap.get(m.fighter1Id || '') || (m.status === 'bye' ? 'Freilos' : '-');
+      const f2Name = participantMap.get(m.fighter2Id || '') || (m.status === 'bye' ? 'Freilos' : '-');
+      const winnerName = m.winnerId ? (participantMap.get(m.winnerId) || 'Unbekannt') : '-';
+      
+      let statusLabel: string = m.status;
+      if (m.status === 'completed') statusLabel = 'Abgeschlossen';
+      else if (m.status === 'pending') statusLabel = 'Geplant';
+      else if (m.status === 'running') statusLabel = 'Laufend';
+      else if (m.status === 'walkover') statusLabel = 'Kampflos/Disqualifikation';
+      else if (m.status === 'bye') statusLabel = 'Freilos';
+
+      return [
+        catName,
+        `Runde ${m.round}`,
+        f1Name,
+        f2Name,
+        statusLabel,
+        winnerName,
+        m.score1,
+        m.score2
+      ];
+    });
+
+    let csvContent = '\uFEFF'; // Excel BOM
+    csvContent += '=== TURNIER-PLATZIERUNGEN (SIEGEREHRUNG) ===\n';
+    csvContent += placementHeaders.join(';') + '\n';
+    csvContent += placementRows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(';')).join('\n') + '\n\n';
+    
+    csvContent += '=== DETAILLIERTES KAMPFPROTOKOLL ===\n';
+    csvContent += headers.join(';') + '\n';
+    csvContent += rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(';')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Turnierergebnisse_${tournament.name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [tournament, matches.data, participants.data, fightGroups.data, categories.data]);
 
   const stepStates = useMemo(
     () => getStepStates(
@@ -264,28 +375,38 @@ export default function TournamentDetail() {
                 </div>
               </div>
               
-              <button
-                onClick={async () => {
-                  if (!window.confirm('Achtung: Dies überschreibt Namen, Vereine und Geburtsdaten aller Teilnehmer unwiderruflich mit Platzhaltern aus Datenschutzgründen. Fortfahren?')) return;
-                  await Promise.all(
-                    participants.data.map((p, index) => {
-                      if (p.isAnonymized) return Promise.resolve();
-                      return participants.update(p.id, {
-                        firstName: `Kämpfer`,
-                        lastName: `${index + 1}`,
-                        club: 'Anonymisiert',
-                        birthDate: '2000-01-01',
-                        isAnonymized: true,
-                      });
-                    })
-                  );
-                  alert('Alle Teilnehmer wurden erfolgreich anonymisiert.');
-                }}
-                disabled={participants.data.every(p => p.isAnonymized)}
-                className="flex items-center gap-2 bg-kyokushin-card border border-kyokushin-border hover:border-kyokushin-red disabled:opacity-50 disabled:cursor-not-allowed text-kyokushin-text-muted hover:text-white px-4 py-2 rounded-lg text-sm transition-colors shrink-0"
-              >
-                {participants.data.every(p => p.isAnonymized) ? 'Daten anonymisiert' : 'DSGVO: Teilnehmer anonymisieren'}
-              </button>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={handleResultsExport}
+                  className="flex items-center gap-2 bg-kyokushin-gold hover:bg-yellow-600 text-black px-4 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer"
+                >
+                  <Download size={14} />
+                  Ergebnisse exportieren
+                </button>
+
+                <button
+                  onClick={async () => {
+                    if (!window.confirm('Achtung: Dies überschreibt Namen, Vereine und Geburtsdaten aller Teilnehmer unwiderruflich mit Platzhaltern aus Datenschutzgründen. Fortfahren?')) return;
+                    await Promise.all(
+                      participants.data.map((p, index) => {
+                        if (p.isAnonymized) return Promise.resolve();
+                        return participants.update(p.id, {
+                          firstName: `Kämpfer`,
+                          lastName: `${index + 1}`,
+                          club: 'Anonymisiert',
+                          birthDate: '2000-01-01',
+                          isAnonymized: true,
+                        });
+                      })
+                    );
+                    alert('Alle Teilnehmer wurden erfolgreich anonymisiert.');
+                  }}
+                  disabled={participants.data.every(p => p.isAnonymized)}
+                  className="flex items-center gap-2 bg-kyokushin-card border border-kyokushin-border hover:border-kyokushin-red disabled:opacity-50 disabled:cursor-not-allowed text-kyokushin-text-muted hover:text-white px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer"
+                >
+                  {participants.data.every(p => p.isAnonymized) ? 'Daten anonymisiert' : 'DSGVO: Teilnehmer anonymisieren'}
+                </button>
+              </div>
             </div>
           )}
 
