@@ -33,6 +33,7 @@ export interface Participant {
   discipline: Discipline[];
   categoryIds: string[];
   status?: ParticipantStatus;
+  isAnonymized?: boolean;
 }
 
 export type Discipline = 'kumite' | 'kata';

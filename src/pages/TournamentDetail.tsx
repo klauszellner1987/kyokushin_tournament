@@ -246,9 +246,37 @@ export default function TournamentDetail() {
       )}
 
       {!nextStep && matches.data.some((m) => m.status !== 'bye') && (
-        <div className="flex items-center gap-2 w-full px-4 py-2 mb-6 text-sm text-green-400 bg-green-500/5 border border-green-500/20 rounded-lg">
-          <CheckCircle2 size={14} className="shrink-0" />
-          <span>Alle Schritte abgeschlossen — Turnier bereit!</span>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full px-5 py-4 mb-6 bg-green-500/5 border border-green-500/20 rounded-xl">
+          <div className="flex items-center gap-3 text-green-400">
+            <CheckCircle2 size={20} className="shrink-0" />
+            <div>
+              <p className="font-bold text-sm">Turnier beendet!</p>
+              <p className="text-xs opacity-80">Alle Kämpfe wurden erfolgreich ausgetragen.</p>
+            </div>
+          </div>
+          
+          <button
+            onClick={async () => {
+              if (!window.confirm('Achtung: Dies überschreibt Namen, Vereine und Geburtsdaten aller Teilnehmer unwiderruflich mit Platzhaltern aus Datenschutzgründen. Fortfahren?')) return;
+              await Promise.all(
+                participants.data.map((p, index) => {
+                  if (p.isAnonymized) return Promise.resolve();
+                  return participants.update(p.id, {
+                    firstName: `Kämpfer`,
+                    lastName: `${index + 1}`,
+                    club: 'Anonymisiert',
+                    birthDate: '2000-01-01',
+                    isAnonymized: true,
+                  });
+                })
+              );
+              alert('Alle Teilnehmer wurden erfolgreich anonymisiert.');
+            }}
+            disabled={participants.data.every(p => p.isAnonymized)}
+            className="flex items-center gap-2 bg-kyokushin-card border border-kyokushin-border hover:border-kyokushin-red disabled:opacity-50 disabled:cursor-not-allowed text-kyokushin-text-muted hover:text-white px-4 py-2 rounded-lg text-sm transition-colors shrink-0"
+          >
+            {participants.data.every(p => p.isAnonymized) ? 'Daten anonymisiert' : 'DSGVO: Teilnehmer anonymisieren'}
+          </button>
         </div>
       )}
 
