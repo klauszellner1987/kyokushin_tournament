@@ -1,11 +1,43 @@
 import { Link, useLocation } from 'react-router';
-import { LayoutDashboard, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, LogOut, User, Download } from 'lucide-react';
 import Kanku from './Kanku';
 import { useAuth } from '../../contexts/AuthContext';
+import { useState, useEffect } from 'react';
 
 export default function Navbar() {
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Also check if app is already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstallable(false);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      setIsInstallable(false);
+    }
+  };
 
   const isHome = location.pathname === '/';
 
@@ -31,6 +63,17 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-1">
+          {isInstallable && (
+            <button
+              onClick={handleInstallClick}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-all cursor-pointer mr-2 border border-amber-500/30"
+              title="Als Desktop-App auf PC installieren"
+            >
+              <Download size={14} />
+              <span>App Installieren</span>
+            </button>
+          )}
+
           <Link
             to="/"
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${

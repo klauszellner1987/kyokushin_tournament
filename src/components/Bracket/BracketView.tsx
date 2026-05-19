@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Play, AlertTriangle, Trophy, ArrowLeft, Users, CheckCircle, Clock, Circle, Medal, Scale } from 'lucide-react';
 import type { Category, FightGroup, Match, Participant } from '../../types';
 import { autoAssign } from '../../utils/groupAssignment';
@@ -90,7 +90,7 @@ export default function BracketView({
     return s === 'withdrawn' || s === 'injured' || s === 'disqualified';
   }, [participantMap]);
 
-  const getMatchesForCategory = useCallback((categoryId: string) => {
+  const getMatchesForCategory = useCallback((categoryId: string): Match[] => {
     const groups = fightGroups.data.filter((g) => g.categoryId === categoryId);
     return matches.data.filter((m) => groups.some((g) => g.id === m.fightGroupId));
   }, [fightGroups.data, matches.data]);
@@ -100,15 +100,15 @@ export default function BracketView({
     for (const cat of categories) {
       const assignment = assignments.find((a) => a.categoryId === cat.id);
       const catMatches = getMatchesForCategory(cat.id);
-      const realMatches = catMatches.filter((m) => m.status !== 'bye');
-      const completed = realMatches.filter((m) => m.status === 'completed' || m.status === 'walkover' || m.status === 'disqualification');
+      const realMatches = catMatches.filter((m: Match) => m.status !== 'bye');
+      const completed = realMatches.filter((m: Match) => m.status === 'completed' || m.status === 'walkover' || m.status === 'disqualification');
       const hasResults = completed.length > 0;
 
       let status: CategoryStats['status'] = 'empty';
       let championName: string | null = null;
 
       if (catMatches.length > 0) {
-        const allDone = realMatches.length > 0 && realMatches.every((m) => m.status === 'completed' || m.status === 'walkover' || m.status === 'disqualification');
+        const allDone = realMatches.length > 0 && realMatches.every((m: Match) => m.status === 'completed' || m.status === 'walkover' || m.status === 'disqualification');
         if (allDone) {
           status = 'completed';
           if (cat.tournamentFormat === 'round_robin' && (cat.kataSystem ?? 'points') !== 'flag') {
@@ -127,8 +127,8 @@ export default function BracketView({
             const sorted = Array.from(winsMap.entries()).sort((a, b) => b[1].wins - a[1].wins || b[1].diff - a[1].diff);
             if (sorted.length > 0) championName = getName(sorted[0][0]);
           } else {
-            const maxRound = Math.max(...catMatches.map((m) => m.round), 0);
-            const finalMatch = catMatches.find((m) => m.round === maxRound);
+            const maxRound = Math.max(...catMatches.map((m: Match) => m.round), 0);
+            const finalMatch = catMatches.find((m: Match) => m.round === maxRound);
             if (finalMatch?.winnerId) {
               championName = getName(finalMatch.winnerId);
             }
