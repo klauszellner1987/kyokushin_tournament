@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const TOKEN_PATH = '_tokens';
 const FREE_TRIAL_PATH = '_freetrial';
-const FREE_TRIAL_LIMIT = 1;
+const FREE_TRIAL_LIMIT = 0; // Disabled free trials for general users
 
 interface TournamentToken {
   id: string;
@@ -36,13 +36,13 @@ export function useTokens() {
   const freeTrialsUsed = myTrials.length;
   const canUseFree = freeTrialsUsed < FREE_TRIAL_LIMIT;
 
-  const canCreateTournament = canUseFree || unusedTokens.length > 0;
+  const canCreateTournament = true; // Always allow creating draft tournaments for free
 
   const addToken = useCallback(
-    async (stripeSessionId?: string) => {
+    async (stripeSessionId?: string, assignedTournamentId?: string | null) => {
       await addTokenOnline({
         userId: uid,
-        tournamentId: null,
+        tournamentId: assignedTournamentId ?? null,
         purchasedAt: Date.now(),
         stripeSessionId: stripeSessionId ?? undefined,
       });
@@ -69,16 +69,35 @@ export function useTokens() {
         localStorage.setItem(processedKey, 'true');
 
         const tokenCount = plan === 'annual' ? 100 : 1;
+        const pendingUnlockTournamentId = localStorage.getItem('pending_unlock_tournament_id');
         
         // Grant tokens
         const grantTokens = async () => {
-          for (let i = 0; i < tokenCount; i++) {
-            await addToken(sessionId);
+          // For single purchase, directly tie the token to the pending tournament if there is one
+          if (tokenCount === 1 && pendingUnlockTournamentId) {
+            await addToken(sessionId, pendingUnlockTournamentId);
+            localStorage.removeItem('pending_unlock_tournament_id');
+          } else {
+            // For annual or general, add tokens and if we have a pending tournament, tie the first one
+            for (let i = 0; i < tokenCount; i++) {
+              const assignId = (i === 0 && pendingUnlockTournamentId) ? pendingUnlockTournamentId : null;
+              await addToken(sessionId, assignId);
+            }
+            if (pendingUnlockTournamentId) {
+              localStorage.removeItem('pending_unlock_tournament_id');
+            }
           }
           
-          // Clear query params from the browser address bar
-          const newUrl = window.location.origin + window.location.pathname;
-          window.history.replaceState({}, document.title, newUrl);
+          // Redirect the user back to the pending tournament if there was one, otherwise clear query
+          const targetUrl = pendingUnlockTournamentId
+            ? `${window.location.origin}/tournament/${pendingUnlockTournamentId}`
+            : `${window.location.origin}${window.location.pathname}`;
+
+          window.history.replaceState({}, document.title, targetUrl);
+          // If we redirected back to a tournament details page, trigger a reload to update UI state
+          if (pendingUnlockTournamentId) {
+            window.location.assign(targetUrl);
+          }
 
           alert(
             tokenCount > 1
@@ -118,6 +137,27 @@ export function useTokens() {
     [uid, canUseFree, unusedTokens, addTrialOnline, updateTokenOnline],
   );
 
+  const isTournamentUnlocked = useCallback(
+    (tournamentId: string): boolean => {
+      const isAdmin = user && 'email' in user && user.email === import.meta.env.VITE_ADMIN_EMAIL;
+      if (isAdmin) return true;
+      return allTokens.some((t) => t.tournamentId === tournamentId);
+    },
+    [allTokens, user],
+  );
+
+  const unlockTournament = useCallback(
+    async (tournamentId: string): Promise<boolean> => {
+      const token = unusedTokens[0];
+      if (token) {
+        await updateTokenOnline(token.id, { tournamentId });
+        return true;
+      }
+      return false;
+    },
+    [unusedTokens, updateTokenOnline],
+  );
+
   const isAdmin = user && 'email' in user && user.email === import.meta.env.VITE_ADMIN_EMAIL;
 
   if (isAdmin) {
@@ -130,6 +170,8 @@ export function useTokens() {
       canUseFree: true,
       consumeToken: () => true,
       addToken: () => {},
+      isTournamentUnlocked: () => true,
+      unlockTournament: async () => true,
     };
   }
 
@@ -142,5 +184,7 @@ export function useTokens() {
     canUseFree,
     consumeToken,
     addToken,
+    isTournamentUnlocked,
+    unlockTournament,
   };
 }
