@@ -1,5 +1,5 @@
-import { useCallback, useSyncExternalStore } from 'react';
-import { localStore } from './useFirestore';
+import { useCallback, useEffect } from 'react';
+import { useCollection } from './useFirestore';
 import { useAuth } from '../contexts/AuthContext';
 
 const TOKEN_PATH = '_tokens';
@@ -14,31 +14,19 @@ interface TournamentToken {
   stripeSessionId?: string;
 }
 
+interface FreeTrialRecord {
+  id: string;
+  userId: string;
+  tournamentId: string;
+  usedAt: number;
+}
+
 export function useTokens() {
   const { user } = useAuth();
   const uid = user ? ('uid' in user ? user.uid : '') : '';
 
-
-
-  const subscribeFn = useCallback(
-    (cb: () => void) => localStore.subscribe(TOKEN_PATH, cb),
-    [],
-  );
-  const snapshotFn = useCallback(
-    () => localStore.getSnapshot(TOKEN_PATH),
-    [],
-  );
-  const allTokens = useSyncExternalStore(subscribeFn, snapshotFn) as unknown as TournamentToken[];
-
-  const subscribeTrialFn = useCallback(
-    (cb: () => void) => localStore.subscribe(FREE_TRIAL_PATH, cb),
-    [],
-  );
-  const snapshotTrialFn = useCallback(
-    () => localStore.getSnapshot(FREE_TRIAL_PATH),
-    [],
-  );
-  const trialRecords = useSyncExternalStore(subscribeTrialFn, snapshotTrialFn);
+  const { data: allTokens, add: addTokenOnline, update: updateTokenOnline, loading: loadingTokens } = useCollection<TournamentToken>(TOKEN_PATH);
+  const { data: trialRecords, add: addTrialOnline } = useCollection<FreeTrialRecord>(FREE_TRIAL_PATH);
 
   const myTokens = allTokens.filter((t) => t.userId === uid);
   const unusedTokens = myTokens.filter((t) => t.tournamentId === null);
@@ -50,10 +38,68 @@ export function useTokens() {
 
   const canCreateTournament = canUseFree || unusedTokens.length > 0;
 
+  const addToken = useCallback(
+    async (stripeSessionId?: string) => {
+      await addTokenOnline({
+        userId: uid,
+        tournamentId: null,
+        purchasedAt: Date.now(),
+        stripeSessionId: stripeSessionId ?? undefined,
+      });
+    },
+    [uid, addTokenOnline],
+  );
+
+  // Stripe Redirect Claimer
+  useEffect(() => {
+    if (!uid || loadingTokens) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get('payment');
+    const sessionId = params.get('session_id');
+    const plan = params.get('plan');
+
+    if (payment === 'success' && sessionId) {
+      const processedKey = `claimed_session_${sessionId}`;
+      const localClaimed = localStorage.getItem(processedKey);
+      const dbClaimed = allTokens.some(t => t.stripeSessionId === sessionId);
+
+      if (!localClaimed && !dbClaimed) {
+        // Mark as claimed locally instantly
+        localStorage.setItem(processedKey, 'true');
+
+        const tokenCount = plan === 'annual' ? 100 : 1;
+        
+        // Grant tokens
+        const grantTokens = async () => {
+          for (let i = 0; i < tokenCount; i++) {
+            await addToken(sessionId);
+          }
+          
+          // Clear query params from the browser address bar
+          const newUrl = window.location.origin + window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+
+          alert(
+            tokenCount > 1
+              ? `Vielen Dank für deinen Kauf! Deine Jahreslizenz wurde erfolgreich aktiviert (100 Turnier-Freischaltungen gutgeschrieben).`
+              : `Vielen Dank für deinen Kauf! Dein Turnier-Ticket wurde erfolgreich freigeschaltet.`
+          );
+        };
+
+        grantTokens();
+      } else {
+        // Clean URL if already processed
+        const newUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    }
+  }, [uid, loadingTokens, allTokens, addToken]);
+
   const consumeToken = useCallback(
-    (tournamentId: string): boolean => {
+    async (tournamentId: string): Promise<boolean> => {
       if (canUseFree) {
-        localStore.add(FREE_TRIAL_PATH, {
+        await addTrialOnline({
           userId: uid,
           tournamentId,
           usedAt: Date.now(),
@@ -63,28 +109,18 @@ export function useTokens() {
 
       const token = unusedTokens[0];
       if (token) {
-        localStore.update(TOKEN_PATH, token.id, { tournamentId });
+        await updateTokenOnline(token.id, { tournamentId });
         return true;
       }
 
       return false;
     },
-    [uid, canUseFree, unusedTokens],
+    [uid, canUseFree, unusedTokens, addTrialOnline, updateTokenOnline],
   );
 
-  const addToken = useCallback(
-    (stripeSessionId?: string) => {
-      localStore.add(TOKEN_PATH, {
-        userId: uid,
-        tournamentId: null,
-        purchasedAt: Date.now(),
-        stripeSessionId: stripeSessionId ?? null,
-      });
-    },
-    [uid],
-  );
+  const isAdmin = user && 'email' in user && user.email === import.meta.env.VITE_ADMIN_EMAIL;
 
-  if (import.meta.env.DEV) {
+  if (isAdmin) {
     return {
       canCreateTournament: true,
       unusedTokenCount: 999,

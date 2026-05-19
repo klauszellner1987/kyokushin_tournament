@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Ticket, Check, Zap } from 'lucide-react';
 import { useTokens } from '../../hooks/useTokens';
+import { useAuth } from '../../contexts/AuthContext';
 
-const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+
 
 interface Plan {
   id: string;
@@ -13,54 +13,46 @@ interface Plan {
   features: string[];
   popular?: boolean;
   tokens: number;
+  paymentLink: string;
 }
 
 const PLANS: Plan[] = [
   {
     id: 'single',
     name: '1 Turnier',
-    price: '9,99 €',
-    priceId: 'price_single',
+    price: '24,00 €',
+    priceId: 'price_1TYkh5J1YHEKjVEshf965p3t',
     tokens: 1,
+    paymentLink: 'https://buy.stripe.com/test_8x26oI3jigsL8Xq5FJcfK00',
     features: [
+      '1 Turnier-Freischaltung',
       'Unbegrenzte Teilnehmer',
-      'Alle Kategorien & Formate',
       'Live-Ansicht für Beamer',
-      'CSV Import/Export',
-    ],
-  },
-  {
-    id: 'triple',
-    name: '3 Turniere',
-    price: '24,99 €',
-    priceId: 'price_triple',
-    tokens: 3,
-    popular: true,
-    features: [
-      'Alles aus "1 Turnier"',
-      '3 Turnier-Tokens',
-      '17% Ersparnis',
+      'Kein Zeitlimit',
     ],
   },
   {
     id: 'annual',
-    name: '10 Turniere',
-    price: '69,99 €',
-    priceId: 'price_annual',
-    tokens: 10,
+    name: 'Jahreslizenz',
+    price: '99,00 €',
+    priceId: 'price_1TYkhtJ1YHEKjVEs8Q6T2gJW',
+    tokens: 999, // Unbegrenzt symbolisch
+    popular: true,
+    paymentLink: 'https://buy.stripe.com/test_aFacN68DCgsL6Pi5FJcfK01',
     features: [
-      'Alles aus "1 Turnier"',
-      '10 Turnier-Tokens',
-      '30% Ersparnis',
-      'Ideal für Vereine',
+      'Unbegrenzte Turniere',
+      'Alle Funktionen inklusive',
+      'Premium-Support',
+      'Einmal jährlich kündbar',
     ],
   },
 ];
 
 export default function PricingCard({ onClose }: { onClose: () => void }) {
+  const { user } = useAuth();
   const { unusedTokenCount, freeTrialsUsed, freeTrialLimit, addToken } = useTokens();
   const [purchasing, setPurchasing] = useState<string | null>(null);
-  const isStripeConfigured = !!STRIPE_PUBLISHABLE_KEY && !!API_BASE;
+  const isStripeConfigured = PLANS.every(p => p.paymentLink && !p.paymentLink.includes('placeholder'));
 
   const handlePurchase = async (plan: Plan) => {
     if (!isStripeConfigured) {
@@ -79,21 +71,10 @@ export default function PricingCard({ onClose }: { onClose: () => void }) {
 
     setPurchasing(plan.id);
     try {
-      const response = await fetch(`${API_BASE}/api/create-checkout-session`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          priceId: plan.priceId,
-          tokens: plan.tokens,
-          successUrl: `${window.location.origin}/?payment=success`,
-          cancelUrl: `${window.location.origin}/?payment=cancelled`,
-        }),
-      });
-
-      const { url } = await response.json();
-      if (url) {
-        window.location.assign(url);
-      }
+      const uid = user ? ('uid' in user ? user.uid : '') : '';
+      // We pass the firebase user ID as a query parameter so Stripe associates it with the purchase
+      const checkoutUrl = `${plan.paymentLink}?client_reference_id=${encodeURIComponent(uid)}`;
+      window.location.assign(checkoutUrl);
     } catch (err) {
       console.error('Checkout error:', err);
       alert('Fehler beim Starten des Bezahlvorgangs. Bitte versuche es erneut.');
@@ -135,7 +116,7 @@ export default function PricingCard({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
           {PLANS.map((plan) => (
             <div
               key={plan.id}

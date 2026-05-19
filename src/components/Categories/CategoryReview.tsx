@@ -19,6 +19,7 @@ import { getAge } from '../../types';
 import { autoAssign } from '../../utils/groupAssignment';
 
 const UNASSIGNED_ID = '__unassigned__';
+const NO_FIGHT_ID = '__no_fight__';
 
 interface Props {
   categories: Category[];
@@ -111,12 +112,13 @@ function DroppableColumn({
   const { setNodeRef } = useDroppable({ id });
 
   const isUnassigned = id === UNASSIGNED_ID;
+  const isNoFight = id === NO_FIGHT_ID;
   const countColor =
     isUnassigned && count > 0
-      ? 'text-amber-400'
+      ? 'text-red-400'
       : count === 0
         ? 'text-kyokushin-text-muted'
-        : count === 1
+        : count === 1 && !isNoFight
           ? 'text-amber-400'
           : 'text-green-400';
 
@@ -127,8 +129,10 @@ function DroppableColumn({
         isOver
           ? 'border-kyokushin-gold bg-kyokushin-gold/5'
           : isUnassigned
-            ? 'border-amber-500/30 bg-amber-500/5'
-            : 'border-kyokushin-border bg-kyokushin-card'
+            ? 'border-red-500/30 bg-red-500/5'
+            : isNoFight
+              ? 'border-kyokushin-text-muted/30 bg-kyokushin-bg'
+              : 'border-kyokushin-border bg-kyokushin-card'
       }`}
     >
       <div className="px-4 py-3 border-b border-kyokushin-border">
@@ -163,7 +167,16 @@ export default function CategoryReview({ categories, participants, onSave, onClo
     for (const a of assignments) {
       draft[a.categoryId] = [...a.participantIds];
     }
-    const allAssigned = new Set(assignments.flatMap((a) => a.participantIds));
+    const noFightIds = participants
+      .filter((p) => p.categoryIds.includes(NO_FIGHT_ID))
+      .map((p) => p.id);
+    draft[NO_FIGHT_ID] = noFightIds;
+
+    const allAssigned = new Set([
+      ...assignments.flatMap((a) => a.participantIds),
+      ...noFightIds
+    ]);
+
     draft[UNASSIGNED_ID] = participants
       .filter((p) => !allAssigned.has(p.id))
       .map((p) => p.id);
@@ -232,6 +245,7 @@ export default function CategoryReview({ categories, participants, onSave, onClo
 
     const isValidContainer =
       targetContainer === UNASSIGNED_ID ||
+      targetContainer === NO_FIGHT_ID ||
       categories.some((c) => c.id === targetContainer);
 
     if (!isValidContainer) {
@@ -269,6 +283,9 @@ export default function CategoryReview({ categories, participants, onSave, onClo
             assignedCatIds.push(cat.id);
           }
         }
+        if (draft[NO_FIGHT_ID]?.includes(p.id)) {
+          assignedCatIds.push(NO_FIGHT_ID);
+        }
         updates.set(p.id, assignedCatIds);
       }
 
@@ -283,9 +300,13 @@ export default function CategoryReview({ categories, participants, onSave, onClo
 
   const invalidCategories = categories.filter((c) => (draft[c.id] ?? []).length === 1);
   const allCategoriesValid = invalidCategories.length === 0;
+  const unassignedCount = (draft[UNASSIGNED_ID] ?? []).length;
+  const noUnassigned = unassignedCount === 0;
+  const canSave = allCategoriesValid && noUnassigned;
 
   const columnOrder = [
     ...categories.map((c) => c.id),
+    NO_FIGHT_ID,
     UNASSIGNED_ID,
   ];
 
@@ -322,8 +343,8 @@ export default function CategoryReview({ categories, participants, onSave, onClo
           </button>
           <button
             onClick={handleSave}
-            disabled={saving || !allCategoriesValid}
-            title={!allCategoriesValid ? 'Alle Kategorien müssen 0 oder mindestens 2 Teilnehmer haben' : undefined}
+            disabled={saving || !canSave}
+            title={!canSave ? 'Alle Nicht zugeordneten müssen einer Kategorie oder Kein Kampf zugewiesen werden. Alle Kategorien müssen 0 oder mindestens 2 Teilnehmer haben' : undefined}
             className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-colors bg-kyokushin-red hover:bg-kyokushin-red-dark text-white disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <Check size={14} />
@@ -332,16 +353,23 @@ export default function CategoryReview({ categories, participants, onSave, onClo
         </div>
       </div>
 
-      {!allCategoriesValid && (
+      {!canSave && (
         <div className="mx-6 mt-4 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
           <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm text-amber-400 font-medium">
-              {invalidCategories.length === 1 ? '1 Kategorie' : `${invalidCategories.length} Kategorien`} mit nur 1 Teilnehmer
-            </p>
+            {!noUnassigned && (
+              <p className="text-sm text-amber-400 font-medium">
+                {unassignedCount === 1 ? '1 Teilnehmer' : `${unassignedCount} Teilnehmer`} nicht zugeordnet!
+              </p>
+            )}
+            {!allCategoriesValid && (
+              <p className="text-sm text-amber-400 font-medium mt-1">
+                {invalidCategories.length === 1 ? '1 Kategorie' : `${invalidCategories.length} Kategorien`} mit nur 1 Teilnehmer!
+              </p>
+            )}
             <p className="text-sm text-kyokushin-text-muted mt-1">
-              Verschiebe den Teilnehmer in eine andere Kategorie oder in "Kein Kampf", damit bestätigt werden kann.
-              Betroffene: {invalidCategories.map((c) => c.name).join(', ')}
+              Verschiebe alle nicht zugeordneten Teilnehmer in eine passende Kategorie oder in "Kein Kampf". Kategorien dürfen zudem nicht genau 1 Teilnehmer haben.
+              {!allCategoriesValid && ` Betroffene: ${invalidCategories.map((c) => c.name).join(', ')}`}
             </p>
           </div>
         </div>
@@ -359,8 +387,9 @@ export default function CategoryReview({ categories, participants, onSave, onClo
           <div className="flex gap-4 h-full">
             {columnOrder.map((colId) => {
               const isUnassigned = colId === UNASSIGNED_ID;
+              const isNoFight = colId === NO_FIGHT_ID;
               const category = categories.find((c) => c.id === colId);
-              const title = isUnassigned ? 'Kein Kampf' : (category?.name ?? '');
+              const title = isUnassigned ? 'Nicht zugeordnet' : isNoFight ? 'Kein Kampf' : (category?.name ?? '');
               const pids = draft[colId] ?? [];
 
               return (

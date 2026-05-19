@@ -135,7 +135,7 @@ export default function CategoryManager({ tournamentType, categories, participan
 
   const unassignedParticipants = useMemo(() => {
     const assignedIds = new Set(assignments.flatMap((a) => a.participantIds));
-    return participants.filter((p) => !assignedIds.has(p.id));
+    return participants.filter((p) => !assignedIds.has(p.id) && !p.categoryIds.includes('__no_fight__'));
   }, [assignments, participants]);
 
   const toggleExpand = (id: string) => {

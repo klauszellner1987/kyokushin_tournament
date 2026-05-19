@@ -97,6 +97,8 @@ export default function ParticipantManager({ tournamentType, participants, categ
 
   const categoryMap = useMemo(() => {
     const map = new Map<string, string[]>();
+    
+    // First map actual categories
     for (const a of assignments) {
       const cat = categories.find((c) => c.id === a.categoryId);
       if (!cat) continue;
@@ -106,8 +108,18 @@ export default function ParticipantManager({ tournamentType, participants, categ
         map.set(pid, existing);
       }
     }
+    
+    // Then map 'Kein Kampf' explicitly
+    for (const p of participants.data) {
+      if (p.categoryIds.includes('__no_fight__')) {
+        const existing = map.get(p.id) ?? [];
+        existing.push('Kein Kampf');
+        map.set(p.id, existing);
+      }
+    }
+    
     return map;
-  }, [assignments, categories]);
+  }, [assignments, categories, participants.data]);
 
   const handleSubmit = async () => {
     if (!form.firstName.trim() || !form.lastName.trim()) return;

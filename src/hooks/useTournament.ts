@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useSyncExternalStore } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../firebase';
 import { useCollection, localStore } from './useFirestore';
 import type { Tournament, Participant, Category, FightGroup, Match } from '../types';
 
 export function useTournamentData(tournamentId: string | undefined) {
+  const { user } = useAuth();
   const subscribeFn = useCallback(
     (cb: () => void) => localStore.subscribe('tournaments', cb),
     [],
@@ -18,7 +20,7 @@ export function useTournamentData(tournamentId: string | undefined) {
   const [tournament, setTournament] = useState<Tournament | null>(() => {
     if (!tournamentId) return null;
     if (!isFirebaseConfigured) {
-      const found = localTournaments.find((t) => t.id === tournamentId);
+      const found = localTournaments.find((t) => t.id === tournamentId && (!user || t.ownerId === user.uid));
       return found ? (found as unknown as Tournament) : null;
     }
     return null;
@@ -28,18 +30,19 @@ export function useTournamentData(tournamentId: string | undefined) {
     return !!tournamentId && isFirebaseConfigured;
   });
   
-  const [prevDeps, setPrevDeps] = useState({ tournamentId, localTournaments });
+  const [prevDeps, setPrevDeps] = useState({ tournamentId, localTournaments, user });
 
   if (
     tournamentId !== prevDeps.tournamentId ||
-    localTournaments !== prevDeps.localTournaments
+    localTournaments !== prevDeps.localTournaments ||
+    user !== prevDeps.user
   ) {
-    setPrevDeps({ tournamentId, localTournaments });
+    setPrevDeps({ tournamentId, localTournaments, user });
     if (!tournamentId) {
       setTournament(null);
       setTournamentLoading(false);
     } else if (!isFirebaseConfigured) {
-      const found = localTournaments.find((t) => t.id === tournamentId);
+      const found = localTournaments.find((t) => t.id === tournamentId && (!user || t.ownerId === user.uid));
       setTournament(found ? (found as unknown as Tournament) : null);
       setTournamentLoading(false);
     } else if (tournamentId !== prevDeps.tournamentId) {
@@ -54,17 +57,29 @@ export function useTournamentData(tournamentId: string | undefined) {
     }
 
     const docRef = doc(db, 'tournaments', tournamentId);
-    const unsubscribe = onSnapshot(docRef, (snap) => {
-      if (snap.exists()) {
-        setTournament({ id: snap.id, ...snap.data() } as Tournament);
-      } else {
+    const unsubscribe = onSnapshot(docRef, 
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (!user || data.ownerId === user.uid) {
+            setTournament({ id: snap.id, ...data } as Tournament);
+          } else {
+            setTournament(null); // Not owner
+          }
+        } else {
+          setTournament(null);
+        }
+        setTournamentLoading(false);
+      },
+      (err) => {
+        console.error("Error fetching tournament (might be blocked by security rules):", err);
         setTournament(null);
+        setTournamentLoading(false);
       }
-      setTournamentLoading(false);
-    });
+    );
 
     return unsubscribe;
-  }, [tournamentId]);
+  }, [tournamentId, user]);
 
   const basePath = tournamentId ? `tournaments/${tournamentId}` : '';
 

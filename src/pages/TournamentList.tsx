@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { Plus, Calendar, MapPin, Trash2, Play, CheckCircle, Swords, Grid3X3, Ticket } from 'lucide-react';
 import { useTournaments, localStore } from '../hooks/useFirestore';
 import { useTokens } from '../hooks/useTokens';
+import { useAuth } from '../contexts/AuthContext';
 import type { Tournament, TournamentType } from '../types';
 import { TOURNAMENT_TYPE_LABELS } from '../types';
 import DateInput from '../components/ui/DateInput';
@@ -25,6 +26,7 @@ const statusColors: Record<Tournament['status'], string> = {
 export default function TournamentList() {
   const { data: tournaments, loading, add, remove } = useTournaments();
   const { canCreateTournament, consumeToken, unusedTokenCount, canUseFree } = useTokens();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
@@ -74,6 +76,7 @@ export default function TournamentList() {
       matCount: formData.matCount,
       status: 'draft',
       createdAt: Date.now(),
+      ownerId: user?.uid,
     } as Omit<Tournament, 'id'>);
 
     consumeToken(id);

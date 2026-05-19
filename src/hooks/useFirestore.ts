@@ -8,6 +8,7 @@ import {
   onSnapshot,
   query,
   orderBy,
+  where,
   type QueryConstraint,
   type DocumentData,
 } from 'firebase/firestore';
@@ -302,9 +303,15 @@ export function useCollection<T extends { id: string }>(
   return { data, loading, error, add, update, remove };
 }
 
+import { useAuth } from '../contexts/AuthContext';
+
 export function useTournaments() {
+  const { user } = useAuth();
+  
   return useCollection<import('../types').Tournament & { id: string }>(
     'tournaments',
-    isFirebaseConfigured ? [orderBy('createdAt', 'desc')] : [],
+    isFirebaseConfigured && user
+      ? [where('ownerId', '==', user.uid), orderBy('createdAt', 'desc')]
+      : [],
   );
 }

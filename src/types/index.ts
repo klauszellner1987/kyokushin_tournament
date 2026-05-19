@@ -17,6 +17,7 @@ export interface Tournament {
   createdAt: number;
   registrationConfirmed?: boolean;
   registrationClosed?: boolean;
+  ownerId?: string;
 }
 
 export type ParticipantStatus = 'active' | 'withdrawn' | 'injured' | 'disqualified';
