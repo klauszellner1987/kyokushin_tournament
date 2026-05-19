@@ -77,6 +77,7 @@ class PersistentStore {
       const allDocs = await idb.documents.toArray();
       for (const d of allDocs) {
         const path = d._collection;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { _rowId, _collection, ...data } = d;
         const current = this.cache.get(path) ?? [];
         this.cache.set(path, [...current, data as Row]);
@@ -234,17 +235,24 @@ export function useCollection<T extends { id: string }>(
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [prevPath, setPrevPath] = useState(path);
 
-  useEffect(() => {
+  if (path !== prevPath) {
+    setPrevPath(path);
     if (!isFirebaseConfigured || !path) {
       setData([]);
       setLoading(false);
+    } else {
+      setData([]);
+      setLoading(true);
+      setError(null);
+    }
+  }
+
+  useEffect(() => {
+    if (!isFirebaseConfigured || !path) {
       return;
     }
-
-    setData([]);
-    setLoading(true);
-    setError(null);
 
     const colRef = collection(fireDb, path);
     const q = constraints.length > 0 ? query(colRef, ...constraints) : colRef;
@@ -268,6 +276,7 @@ export function useCollection<T extends { id: string }>(
     );
 
     return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path]);
 
   if (!isFirebaseConfigured) {

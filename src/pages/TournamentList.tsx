@@ -5,7 +5,8 @@ import { useTournaments, localStore } from '../hooks/useFirestore';
 import { useTokens } from '../hooks/useTokens';
 import type { Tournament, TournamentType } from '../types';
 import { TOURNAMENT_TYPE_LABELS } from '../types';
-import DateInput, { parseDateDE } from '../components/ui/DateInput';
+import DateInput from '../components/ui/DateInput';
+import { parseDateDE } from '../utils/date';
 import PricingCard from '../components/Payment/PricingCard';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 

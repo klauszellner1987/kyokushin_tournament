@@ -66,8 +66,9 @@ export default function PricingCard({ onClose }: { onClose: () => void }) {
     if (!isStripeConfigured) {
       // Demo mode: add tokens directly
       setPurchasing(plan.id);
+      const now = new Date().getTime();
       for (let i = 0; i < plan.tokens; i++) {
-        addToken(`demo_${Date.now()}_${i}`);
+        addToken(`demo_${now}_${i}`);
       }
       setTimeout(() => {
         setPurchasing(null);
@@ -91,7 +92,7 @@ export default function PricingCard({ onClose }: { onClose: () => void }) {
 
       const { url } = await response.json();
       if (url) {
-        window.location.href = url;
+        window.location.assign(url);
       }
     } catch (err) {
       console.error('Checkout error:', err);

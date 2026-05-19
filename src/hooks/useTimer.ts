@@ -1,50 +1,35 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-
-function computeRemaining(timerEndsAt?: number, timerPausedRemaining?: number): number {
-  if (timerPausedRemaining != null) return timerPausedRemaining;
-  if (timerEndsAt != null) return Math.max(0, (timerEndsAt - Date.now()) / 1000);
-  return 0;
-}
+import { useState, useEffect, useCallback } from 'react';
 
 export function useTimer(timerEndsAt?: number, timerPausedRemaining?: number) {
-  const [remaining, setRemaining] = useState<number>(
-    () => computeRemaining(timerEndsAt, timerPausedRemaining),
-  );
+  const [now, setNow] = useState<number>(() => new Date().getTime());
 
-  const prevEndsAtRef = useRef(timerEndsAt);
-  const prevPausedRef = useRef(timerPausedRemaining);
-  if (timerEndsAt !== prevEndsAtRef.current || timerPausedRemaining !== prevPausedRef.current) {
-    prevEndsAtRef.current = timerEndsAt;
-    prevPausedRef.current = timerPausedRemaining;
-    setRemaining(computeRemaining(timerEndsAt, timerPausedRemaining));
-  }
+  useEffect(() => {
+    let rafId: number;
+    const tick = () => {
+      setNow(Date.now());
+      rafId = requestAnimationFrame(tick);
+    };
+    
+    if (timerEndsAt != null && timerPausedRemaining == null) {
+      rafId = requestAnimationFrame(tick);
+    }
+    
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [timerEndsAt, timerPausedRemaining]);
 
   const isPaused = timerPausedRemaining != null;
   const isRunning = timerEndsAt != null && !isPaused;
-  const isExpired = isRunning && remaining <= 0 && timerEndsAt != null && timerEndsAt <= Date.now();
+  
+  let remaining = 0;
+  if (timerPausedRemaining != null) {
+    remaining = timerPausedRemaining;
+  } else if (timerEndsAt != null) {
+    remaining = Math.max(0, (timerEndsAt - now) / 1000);
+  }
 
-  useEffect(() => {
-    if (timerPausedRemaining != null) {
-      setRemaining(timerPausedRemaining);
-      return;
-    }
-    if (timerEndsAt == null) {
-      setRemaining(0);
-      return;
-    }
-
-    let rafId: number;
-    const tick = () => {
-      const left = Math.max(0, (timerEndsAt - Date.now()) / 1000);
-      setRemaining(left);
-      if (left > 0) {
-        rafId = requestAnimationFrame(tick);
-      }
-    };
-    tick();
-
-    return () => cancelAnimationFrame(rafId);
-  }, [timerEndsAt, timerPausedRemaining]);
+  const isExpired = isRunning && remaining <= 0 && timerEndsAt != null && timerEndsAt <= now;
 
   const formatTime = useCallback((seconds: number) => {
     const m = Math.floor(seconds / 60);

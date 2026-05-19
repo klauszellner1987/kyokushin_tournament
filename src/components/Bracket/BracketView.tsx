@@ -64,36 +64,36 @@ export default function BracketView({
   const [corrScore2, setCorrScore2] = useState(0);
   const [correctionError, setCorrectionError] = useState<string | null>(null);
 
-  const participantMap = new Map(participants.map((p) => [p.id, p]));
+  const participantMap = useMemo(() => new Map(participants.map((p) => [p.id, p])), [participants]);
 
   const { assignments } = useMemo(
     () => autoAssign(participants, categories, registrationConfirmed),
     [participants, categories, registrationConfirmed],
   );
 
-  const getName = (id: string | null) => {
+  const getName = useCallback((id: string | null) => {
     if (!id) return 'Noch offen';
     const p = participantMap.get(id);
     return p ? `${p.lastName}, ${p.firstName}` : 'Noch offen';
-  };
+  }, [participantMap]);
 
-  const getClub = (id: string | null) => {
+  const getClub = useCallback((id: string | null) => {
     if (!id) return '';
     const p = participantMap.get(id);
     return p?.club ?? '';
-  };
+  }, [participantMap]);
 
-  const isWithdrawn = (id: string | null) => {
+  const isWithdrawn = useCallback((id: string | null) => {
     if (!id) return false;
     const p = participantMap.get(id);
     const s = p?.status ?? 'active';
     return s === 'withdrawn' || s === 'injured' || s === 'disqualified';
-  };
+  }, [participantMap]);
 
-  const getMatchesForCategory = (categoryId: string) => {
+  const getMatchesForCategory = useCallback((categoryId: string) => {
     const groups = fightGroups.data.filter((g) => g.categoryId === categoryId);
     return matches.data.filter((m) => groups.some((g) => g.id === m.fightGroupId));
-  };
+  }, [fightGroups.data, matches.data]);
 
   const categoryStats = useMemo(() => {
     const stats = new Map<string, CategoryStats>();
@@ -148,16 +148,16 @@ export default function BracketView({
       });
     }
     return stats;
-  }, [categories, assignments, fightGroups.data, matches.data]);
+  }, [categories, assignments, getMatchesForCategory, getName]);
 
   // --- Detail view data ---
   const category = activeCategory ? categories.find((c) => c.id === activeCategory) : null;
-  const groupsForCategory = activeCategory
+  const groupsForCategory = useMemo(() => activeCategory
     ? fightGroups.data.filter((g) => g.categoryId === activeCategory)
-    : [];
-  const matchesForCategory = activeCategory
+    : [], [activeCategory, fightGroups.data]);
+  const matchesForCategory = useMemo(() => activeCategory
     ? matches.data.filter((m) => groupsForCategory.some((g) => g.id === m.fightGroupId))
-    : [];
+    : [], [activeCategory, matches.data, groupsForCategory]);
 
   const rounds = new Map<number, Match[]>();
   for (const m of matchesForCategory) {
@@ -209,7 +209,7 @@ export default function BracketView({
         diff: s.pointsFor - s.pointsAgainst,
       }))
       .sort((a, b) => b.wins - a.wins || b.diff - a.diff || b.pointsFor - a.pointsFor);
-  }, [matchesForCategory, category]);
+  }, [matchesForCategory, category, getName, getClub]);
 
   const handleGenerateRequest = () => {
     if (!category) return;

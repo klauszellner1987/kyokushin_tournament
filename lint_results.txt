@@ -1,0 +1,231 @@
+
+> tournament@0.0.0 lint
+> eslint .
+
+
+/Users/klauszellner/Tournament/src/components/Bracket/BracketView.tsx
+  151:6  warning  React Hook useMemo has missing dependencies: 'getMatchesForCategory' and 'getName'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  212:6  warning  React Hook useMemo has missing dependencies: 'getClub' and 'getName'. Either include them or remove the dependency array                react-hooks/exhaustive-deps
+
+/Users/klauszellner/Tournament/src/components/FightControl/MatPanel.tsx
+   90:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/klauszellner/Tournament/src/components/FightControl/MatPanel.tsx:90:7
+  88 |   useEffect(() => {
+  89 |     if (!isKata && isExpired && currentMatch && timerExpiredHandled !== currentMatch.id) {
+> 90 |       setTimerExpiredHandled(currentMatch.id);
+     |       ^^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  91 |       setShowDecisionModal(true);
+  92 |     }
+  93 |   }, [isKata, isExpired, currentMatch, timerExpiredHandled]);  react-hooks/set-state-in-effect
+  120:22  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/Users/klauszellner/Tournament/src/components/FightControl/MatPanel.tsx:120:22
+  118 |       await onUpdateMatch(currentMatch.id, {
+  119 |         status: 'running',
+> 120 |         timerEndsAt: Date.now() + duration * 1000,
+      |                      ^^^^^^^^^^ Cannot call impure function
+  121 |         timerPausedRemaining: undefined,
+  122 |       });
+  123 |     }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 react-hooks/purity
+
+/Users/klauszellner/Tournament/src/components/Payment/PricingCard.tsx
+  70:26  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/Users/klauszellner/Tournament/src/components/Payment/PricingCard.tsx:70:26
+  68 |       setPurchasing(plan.id);
+  69 |       for (let i = 0; i < plan.tokens; i++) {
+> 70 |         addToken(`demo_${Date.now()}_${i}`);
+     |                          ^^^^^^^^^^ Cannot call impure function
+  71 |       }
+  72 |       setTimeout(() => {
+  73 |         setPurchasing(null);  react-hooks/purity
+  94:9   error  Error: This value cannot be modified
+
+Modifying a variable defined outside a component or hook is not allowed. Consider using an effect.
+
+/Users/klauszellner/Tournament/src/components/Payment/PricingCard.tsx:94:9
+  92 |       const { url } = await response.json();
+  93 |       if (url) {
+> 94 |         window.location.href = url;
+     |         ^^^^^^^^^^^^^^^ value cannot be modified
+  95 |       }
+  96 |     } catch (err) {
+  97 |       console.error('Checkout error:', err);                                                                                                                                                                                                                   react-hooks/immutability
+
+/Users/klauszellner/Tournament/src/components/ui/DateInput.tsx
+  27:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  31:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/Users/klauszellner/Tournament/src/contexts/AuthContext.tsx
+  30:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/Users/klauszellner/Tournament/src/hooks/useFirestore.ts
+   80:17  error    '_rowId' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+   80:25  error    '_collection' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+  240:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/klauszellner/Tournament/src/hooks/useFirestore.ts:240:7
+  238 |   useEffect(() => {
+  239 |     if (!isFirebaseConfigured || !path) {
+> 240 |       setData([]);
+      |       ^^^^^^^ Avoid calling setState() directly within an effect
+  241 |       setLoading(false);
+  242 |       return;
+  243 |     }  react-hooks/set-state-in-effect
+  271:6   warning  React Hook useEffect has a missing dependency: 'constraints'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            react-hooks/exhaustive-deps
+
+/Users/klauszellner/Tournament/src/hooks/useTimer.ts
+  16:23  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/klauszellner/Tournament/src/hooks/useTimer.ts:16:23
+  14 |   const prevEndsAtRef = useRef(timerEndsAt);
+  15 |   const prevPausedRef = useRef(timerPausedRemaining);
+> 16 |   if (timerEndsAt !== prevEndsAtRef.current || timerPausedRemaining !== prevPausedRef.current) {
+     |                       ^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  17 |     prevEndsAtRef.current = timerEndsAt;
+  18 |     prevPausedRef.current = timerPausedRemaining;
+  19 |     setRemaining(computeRemaining(timerEndsAt, timerPausedRemaining));                                                                                                                                      react-hooks/refs
+  16:73  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/klauszellner/Tournament/src/hooks/useTimer.ts:16:73
+  14 |   const prevEndsAtRef = useRef(timerEndsAt);
+  15 |   const prevPausedRef = useRef(timerPausedRemaining);
+> 16 |   if (timerEndsAt !== prevEndsAtRef.current || timerPausedRemaining !== prevPausedRef.current) {
+     |                                                                         ^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  17 |     prevEndsAtRef.current = timerEndsAt;
+  18 |     prevPausedRef.current = timerPausedRemaining;
+  19 |     setRemaining(computeRemaining(timerEndsAt, timerPausedRemaining));                                                                                    react-hooks/refs
+  17:5   error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/klauszellner/Tournament/src/hooks/useTimer.ts:17:5
+  15 |   const prevPausedRef = useRef(timerPausedRemaining);
+  16 |   if (timerEndsAt !== prevEndsAtRef.current || timerPausedRemaining !== prevPausedRef.current) {
+> 17 |     prevEndsAtRef.current = timerEndsAt;
+     |     ^^^^^^^^^^^^^^^^^^^^^ Cannot update ref during render
+  18 |     prevPausedRef.current = timerPausedRemaining;
+  19 |     setRemaining(computeRemaining(timerEndsAt, timerPausedRemaining));
+  20 |   }                                                                                                                                                                                                        react-hooks/refs
+  18:5   error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/Users/klauszellner/Tournament/src/hooks/useTimer.ts:18:5
+  16 |   if (timerEndsAt !== prevEndsAtRef.current || timerPausedRemaining !== prevPausedRef.current) {
+  17 |     prevEndsAtRef.current = timerEndsAt;
+> 18 |     prevPausedRef.current = timerPausedRemaining;
+     |     ^^^^^^^^^^^^^^^^^^^^^ Cannot update ref during render
+  19 |     setRemaining(computeRemaining(timerEndsAt, timerPausedRemaining));
+  20 |   }
+  21 |                                                                                                                                                                                                                                                              react-hooks/refs
+  24:90  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/Users/klauszellner/Tournament/src/hooks/useTimer.ts:24:90
+  22 |   const isPaused = timerPausedRemaining != null;
+  23 |   const isRunning = timerEndsAt != null && !isPaused;
+> 24 |   const isExpired = isRunning && remaining <= 0 && timerEndsAt != null && timerEndsAt <= Date.now();
+     |                                                                                          ^^^^^^^^^^ Cannot call impure function
+  25 |
+  26 |   useEffect(() => {
+  27 |     if (timerPausedRemaining != null) {                                                                                                                                                                                                            react-hooks/purity
+  28:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/klauszellner/Tournament/src/hooks/useTimer.ts:28:7
+  26 |   useEffect(() => {
+  27 |     if (timerPausedRemaining != null) {
+> 28 |       setRemaining(timerPausedRemaining);
+     |       ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  29 |       return;
+  30 |     }
+  31 |     if (timerEndsAt == null) {  react-hooks/set-state-in-effect
+
+/Users/klauszellner/Tournament/src/hooks/useTokens.ts
+  34:23  error  React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                 react-hooks/rules-of-hooks
+  38:22  error  React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                 react-hooks/rules-of-hooks
+  42:21  error  React Hook "useSyncExternalStore" is called conditionally. React Hooks must be called in the exact same order in every component render                                                        react-hooks/rules-of-hooks
+  44:28  error  React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                 react-hooks/rules-of-hooks
+  48:27  error  React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                 react-hooks/rules-of-hooks
+  52:24  error  React Hook "useSyncExternalStore" is called conditionally. React Hooks must be called in the exact same order in every component render                                                        react-hooks/rules-of-hooks
+  64:24  error  React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+  86:20  error  React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+
+/Users/klauszellner/Tournament/src/hooks/useTournament.ts
+  23:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/klauszellner/Tournament/src/hooks/useTournament.ts:23:7
+  21 |   useEffect(() => {
+  22 |     if (!tournamentId) {
+> 23 |       setTournament(null);
+     |       ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  24 |       setTournamentLoading(false);
+  25 |       return;
+  26 |     }  react-hooks/set-state-in-effect
+
+/Users/klauszellner/Tournament/src/pages/TournamentDetail.tsx
+   27:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-refresh/only-export-components
+  118:20  error  Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. This value was memoized in source but not in compilation output.
+
+/Users/klauszellner/Tournament/src/pages/TournamentDetail.tsx:118:20
+  116 |   );
+  117 |
+> 118 |   const nextStep = useMemo(() => {
+      |                    ^^^^^^^^^^^^^^^
+> 119 |     for (const tab of WORKFLOW_TABS) {
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 120 |       const s = stepStates[tab];
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 121 |       if (s.state === 'next') return { tab, hint: s.hint! };
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 122 |     }
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 123 |     return null;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 124 |   }, [stepStates]);
+      | ^^^^^^^^^^^^^^^^^^^ Could not preserve existing memoization
+  125 |
+  126 |   if (tournamentLoading) {
+  127 |     return (  react-hooks/preserve-manual-memoization
+
+/Users/klauszellner/Tournament/src/utils/walkover.ts
+  18:3  error  '_fightGroups' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 31 problems (28 errors, 3 warnings)
+

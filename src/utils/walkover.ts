@@ -1,4 +1,4 @@
-import type { Match, FightGroup } from '../types';
+import type { Match } from '../types';
 import { advanceWinner } from './bracketGenerator';
 
 export interface MatchUpdate {
@@ -15,7 +15,6 @@ export interface MatchUpdate {
 export function computeWalkoverUpdates(
   participantId: string,
   allMatches: Match[],
-  _fightGroups: FightGroup[],
 ): MatchUpdate[] {
   const updates: MatchUpdate[] = [];
 

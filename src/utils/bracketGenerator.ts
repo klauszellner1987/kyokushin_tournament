@@ -19,10 +19,17 @@ export function generateSingleElimination(
   fightGroupId: string,
   participantIds: string[],
 ): Omit<Match, 'id'>[] {
+  if (!participantIds || participantIds.length < 2) {
+    console.warn(`[BracketGenerator] generateSingleElimination called with less than 2 participants for group ${fightGroupId}. Returning empty bracket.`);
+    return [];
+  }
+
   const shuffled = shuffle(participantIds);
   const bracketSize = nextPowerOfTwo(shuffled.length);
   const totalRounds = Math.log2(bracketSize);
   const matches: Omit<Match, 'id'>[] = [];
+  
+  console.info(`[BracketGenerator] Generating Single Elimination for ${shuffled.length} participants (bracket size: ${bracketSize}, rounds: ${totalRounds}) in group ${fightGroupId}`);
 
   // Distribute fighters across slots so that each match has at most one bye.
   // Phase 1: one fighter per match (fills fighter1 of each match).
@@ -85,7 +92,14 @@ export function generateRoundRobin(
   fightGroupId: string,
   participantIds: string[],
 ): Omit<Match, 'id'>[] {
+  if (!participantIds || participantIds.length < 2) {
+    console.warn(`[BracketGenerator] generateRoundRobin called with less than 2 participants for group ${fightGroupId}. Returning empty bracket.`);
+    return [];
+  }
+
   const matches: Omit<Match, 'id'>[] = [];
+  
+  console.info(`[BracketGenerator] Generating Round Robin for ${participantIds.length} participants in group ${fightGroupId}`);
   const ids = [...participantIds];
   if (ids.length % 2 !== 0) ids.push('__BYE__');
 

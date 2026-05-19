@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Play, Pause, Square, ChevronDown, ChevronUp, Timer, ShieldBan, Plus, Scale } from 'lucide-react';
 import type { Match, Category, FightGroup, Participant } from '../../types';
 import { advanceWinner } from '../../utils/bracketGenerator';
@@ -85,12 +85,10 @@ export default function MatPanel({
 
   const currentRound = getCurrentFightRound(currentMatch);
 
-  useEffect(() => {
-    if (!isKata && isExpired && currentMatch && timerExpiredHandled !== currentMatch.id) {
-      setTimerExpiredHandled(currentMatch.id);
-      setShowDecisionModal(true);
-    }
-  }, [isKata, isExpired, currentMatch, timerExpiredHandled]);
+  if (!isKata && isExpired && currentMatch && timerExpiredHandled !== currentMatch.id) {
+    setTimerExpiredHandled(currentMatch.id);
+    setShowDecisionModal(true);
+  }
 
   const getName = (id: string | null) => {
     if (!id) return 'Noch offen';
@@ -115,9 +113,10 @@ export default function MatPanel({
       setShowResultModal(true);
     } else {
       const duration = getDurationForRound(currentRound, category);
+      const now = new Date().getTime();
       await onUpdateMatch(currentMatch.id, {
         status: 'running',
-        timerEndsAt: Date.now() + duration * 1000,
+        timerEndsAt: now + duration * 1000,
         timerPausedRemaining: undefined,
       });
     }
@@ -126,7 +125,8 @@ export default function MatPanel({
 
   const handlePause = async () => {
     if (!currentMatch || !currentMatch.timerEndsAt) return;
-    const remaining = Math.max(0, (currentMatch.timerEndsAt - Date.now()) / 1000);
+    const now = new Date().getTime();
+    const remaining = Math.max(0, (currentMatch.timerEndsAt - now) / 1000);
     await onUpdateMatch(currentMatch.id, {
       timerPausedRemaining: remaining,
       timerEndsAt: undefined,
@@ -135,8 +135,9 @@ export default function MatPanel({
 
   const handleResume = async () => {
     if (!currentMatch || currentMatch.timerPausedRemaining == null) return;
+    const now = new Date().getTime();
     await onUpdateMatch(currentMatch.id, {
-      timerEndsAt: Date.now() + currentMatch.timerPausedRemaining * 1000,
+      timerEndsAt: now + currentMatch.timerPausedRemaining * 1000,
       timerPausedRemaining: undefined,
     });
   };

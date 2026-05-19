@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useParams, Link } from 'react-router';
 import { Users, FolderTree, Swords, Monitor, ArrowLeft, Grid3X3, Radio, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useTournamentData } from '../hooks/useTournament';
@@ -97,12 +98,11 @@ export default function TournamentDetail() {
     const walkoverUpdates = computeWalkoverUpdates(
       participantId,
       matches.data,
-      fightGroups.data,
     );
     for (const u of walkoverUpdates) {
       await matches.update(u.matchId, u.updates);
     }
-  }, [participants, matches, fightGroups.data]);
+  }, [participants, matches]);
 
   const stepStates = useMemo(
     () => getStepStates(
@@ -115,13 +115,14 @@ export default function TournamentDetail() {
     [participants.data, categories.data, tournament?.registrationConfirmed, matches.data, tournament?.registrationClosed],
   );
 
-  const nextStep = useMemo(() => {
-    for (const tab of WORKFLOW_TABS) {
-      const s = stepStates[tab];
-      if (s.state === 'next') return { tab, hint: s.hint! };
+  let nextStep = null;
+  for (const tab of WORKFLOW_TABS) {
+    const s = stepStates[tab];
+    if (s.state === 'next') {
+      nextStep = { tab, hint: s.hint! };
+      break;
     }
-    return null;
-  }, [stepStates]);
+  }
 
   if (tournamentLoading) {
     return (

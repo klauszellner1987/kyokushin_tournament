@@ -5,9 +5,6 @@ import { useCollection, localStore } from './useFirestore';
 import type { Tournament, Participant, Category, FightGroup, Match } from '../types';
 
 export function useTournamentData(tournamentId: string | undefined) {
-  const [tournament, setTournament] = useState<Tournament | null>(null);
-  const [tournamentLoading, setTournamentLoading] = useState(true);
-
   const subscribeFn = useCallback(
     (cb: () => void) => localStore.subscribe('tournaments', cb),
     [],
@@ -18,17 +15,30 @@ export function useTournamentData(tournamentId: string | undefined) {
   );
   const localTournaments = useSyncExternalStore(subscribeFn, snapshotFn);
 
-  useEffect(() => {
+  const [tournament, setTournament] = useState<Tournament | null>(null);
+  const [tournamentLoading, setTournamentLoading] = useState(true);
+  const [prevDeps, setPrevDeps] = useState({ tournamentId, localTournaments });
+
+  if (
+    tournamentId !== prevDeps.tournamentId ||
+    localTournaments !== prevDeps.localTournaments
+  ) {
+    setPrevDeps({ tournamentId, localTournaments });
     if (!tournamentId) {
       setTournament(null);
       setTournamentLoading(false);
-      return;
-    }
-
-    if (!isFirebaseConfigured) {
+    } else if (!isFirebaseConfigured) {
       const found = localTournaments.find((t) => t.id === tournamentId);
       setTournament(found ? (found as unknown as Tournament) : null);
       setTournamentLoading(false);
+    } else if (tournamentId !== prevDeps.tournamentId) {
+      setTournament(null);
+      setTournamentLoading(true);
+    }
+  }
+
+  useEffect(() => {
+    if (!tournamentId || !isFirebaseConfigured) {
       return;
     }
 
@@ -43,7 +53,7 @@ export function useTournamentData(tournamentId: string | undefined) {
     });
 
     return unsubscribe;
-  }, [tournamentId, localTournaments]);
+  }, [tournamentId]);
 
   const basePath = tournamentId ? `tournaments/${tournamentId}` : '';
 
