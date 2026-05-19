@@ -15,8 +15,19 @@ export function useTournamentData(tournamentId: string | undefined) {
   );
   const localTournaments = useSyncExternalStore(subscribeFn, snapshotFn);
 
-  const [tournament, setTournament] = useState<Tournament | null>(null);
-  const [tournamentLoading, setTournamentLoading] = useState(true);
+  const [tournament, setTournament] = useState<Tournament | null>(() => {
+    if (!tournamentId) return null;
+    if (!isFirebaseConfigured) {
+      const found = localTournaments.find((t) => t.id === tournamentId);
+      return found ? (found as unknown as Tournament) : null;
+    }
+    return null;
+  });
+  
+  const [tournamentLoading, setTournamentLoading] = useState<boolean>(() => {
+    return !!tournamentId && isFirebaseConfigured;
+  });
+  
   const [prevDeps, setPrevDeps] = useState({ tournamentId, localTournaments });
 
   if (
