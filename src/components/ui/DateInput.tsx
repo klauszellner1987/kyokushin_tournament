@@ -103,6 +103,7 @@ export default function DateInput({ value, onChange, className = '', min, error 
   const handlePickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.value) {
       onChange(toDE(e.target.value));
+      pickerRef.current?.blur();
     }
   };
 
