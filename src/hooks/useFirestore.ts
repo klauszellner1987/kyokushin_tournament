@@ -286,13 +286,21 @@ export function useCollection<T extends { id: string }>(
 
   const add = async (item: Omit<T, 'id'>) => {
     const colRef = collection(fireDb, path);
-    const docRef = await addDoc(colRef, item as DocumentData);
+    const cleanItem = { ...item } as Record<string, unknown>;
+    Object.keys(cleanItem).forEach((key) => {
+      if (cleanItem[key] === undefined) delete cleanItem[key];
+    });
+    const docRef = await addDoc(colRef, cleanItem as DocumentData);
     return docRef.id;
   };
 
   const update = async (id: string, updates: Partial<T>) => {
     const docRef = doc(fireDb, path, id);
-    await updateDoc(docRef, updates as DocumentData);
+    const cleanUpdates = { ...updates } as Record<string, unknown>;
+    Object.keys(cleanUpdates).forEach((key) => {
+      if (cleanUpdates[key] === undefined) delete cleanUpdates[key];
+    });
+    await updateDoc(docRef, cleanUpdates as DocumentData);
   };
 
   const remove = async (id: string) => {
