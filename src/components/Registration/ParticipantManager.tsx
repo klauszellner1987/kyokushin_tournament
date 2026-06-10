@@ -506,10 +506,16 @@ export default function ParticipantManager({ tournamentType, participants, categ
                 </label>
                 <input
                   type="text"
+                  list="participant-clubs-datalist"
                   value={form.club}
                   onChange={(e) => setForm({ ...form, club: e.target.value })}
                   className="w-full bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-kyokushin-red"
                 />
+                <datalist id="participant-clubs-datalist">
+                  {uniqueClubs.map((club) => (
+                    <option key={club} value={club} />
+                  ))}
+                </datalist>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
