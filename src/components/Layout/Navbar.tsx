@@ -4,25 +4,29 @@ import Kanku from './Kanku';
 import { useAuth } from '../../contexts/AuthContext';
 import { useState, useEffect } from 'react';
 
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
+
 export default function Navbar() {
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    // Also check if app is already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstallable(false);
-    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);

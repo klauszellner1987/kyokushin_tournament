@@ -18,8 +18,8 @@ Bevor du mit den Testfällen startest, stelle sicher, dass bei jedem UI-Element 
 ## 🛠️ Vorbereitung & Test-Zugangsdaten
 1. **Ziel-Umgebung:** Google Chrome oder Microsoft Edge (erforderlich für vollen PWA- und Service-Worker-Support).
 2. **Admin-Konto zum Testen:**
-   * **E-Mail:** `sarah.marklowski@web.de`
-   * **Passwort:** `pia1979.`
+   * **E-Mail:** `florian.kainz@web.de`
+   * **Passwort:** `florian2026.`
 3. **Stripe Sandbox-Zahlungsdaten:**
    * **Kreditkarte:** `4242 4242 4242 4242`
    * **Ablaufdatum:** Beliebiger Monat/Jahr in der Zukunft (z. B. `12/30`)
@@ -73,10 +73,10 @@ Bevor du mit den Testfällen startest, stelle sicher, dass bei jedem UI-Element 
 * **Funktionelles Ergebnis:** Nach korrekter Registrierung wirst du sofort eingeloggt und das Dashboard für neue Benutzer öffnet sich.
 
 ### TC 2.2: Admin-Login & Berechtigungs-Whitelist
-* **Ziel:** Überprüfung, ob das System Sarah Marklowski als System-Administratorin mit vollen Rechten einstuft.
+* **Ziel:** Überprüfung, ob das System Kainz Florian als System-Administrator mit vollen Rechten einstuft.
 * **Schritte:**
   1. Logge dich über **„Abmelden“** aus.
-  2. Logge dich mit den Admin-Daten (`sarah.marklowski@web.de` / `pia1979.`) ein.
+  2. Logge dich mit den Admin-Daten (`florian.kainz@web.de` / `florian2026.`) ein.
   3. Navigiere auf die Turnier-Liste.
 * **Visuelle Sichtkontrolle:**
   * [ ] Zeigt die Navigationsleiste den eingeloggten Namen oder die E-Mail gut lesbar und ohne Textüberlappungen an?

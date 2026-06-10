@@ -139,7 +139,12 @@ export function useTokens() {
 
   const isTournamentUnlocked = useCallback(
     (tournamentId: string): boolean => {
-      const isAdmin = user && 'email' in user && (user.email === import.meta.env.VITE_ADMIN_EMAIL || user.email === 'sarah.marklowski@web.de');
+      const isAdmin = user && 'email' in user && user.email && (
+        user.email.toLowerCase() === (import.meta.env.VITE_ADMIN_EMAIL || 'klauszellner1987@gmail.com').toLowerCase() || 
+        user.email.toLowerCase() === 'sarah.marklowski@web.de' ||
+        user.email.toLowerCase() === 'florian.kainz@web.de' ||
+        user.email.toLowerCase() === 'kainz.florian@web.de'
+      );
       if (isAdmin) return true;
       return allTokens.some((t) => t.tournamentId === tournamentId);
     },
@@ -158,7 +163,12 @@ export function useTokens() {
     [unusedTokens, updateTokenOnline],
   );
 
-  const isAdmin = user && 'email' in user && (user.email === import.meta.env.VITE_ADMIN_EMAIL || user.email === 'sarah.marklowski@web.de');
+  const isAdmin = user && 'email' in user && user.email && (
+    user.email.toLowerCase() === (import.meta.env.VITE_ADMIN_EMAIL || 'klauszellner1987@gmail.com').toLowerCase() || 
+    user.email.toLowerCase() === 'sarah.marklowski@web.de' ||
+    user.email.toLowerCase() === 'florian.kainz@web.de' ||
+    user.email.toLowerCase() === 'kainz.florian@web.de'
+  );
 
   if (isAdmin) {
     return {
