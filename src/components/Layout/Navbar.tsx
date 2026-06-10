@@ -1,8 +1,9 @@
 import { Link, useLocation } from 'react-router';
-import { LayoutDashboard, LogOut, User, Download } from 'lucide-react';
+import { LayoutDashboard, LogOut, User, Download, RotateCcw } from 'lucide-react';
 import Kanku from './Kanku';
 import { useAuth } from '../../contexts/AuthContext';
 import { useState, useEffect } from 'react';
+import { useTournamentData } from '../../hooks/useTournament';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -44,6 +45,68 @@ export default function Navbar() {
   };
 
   const isHome = location.pathname === '/';
+
+  const match = location.pathname.match(/^\/tournament\/([^/]+)/);
+  const currentTournamentId = match ? match[1] : null;
+
+  const {
+    tournament,
+    updateTournament,
+    participants,
+    fightGroups,
+    matches,
+  } = useTournamentData(currentTournamentId ?? undefined);
+
+  const [isResetting, setIsResetting] = useState(false);
+
+  const canReset = !!(
+    currentTournamentId &&
+    tournament &&
+    participants.data.length > 0 &&
+    (tournament.registrationClosed || tournament.registrationConfirmed || matches.data.length > 0)
+  );
+
+  const handleResetTournament = async () => {
+    if (!currentTournamentId) return;
+
+    const confirmReset = window.confirm(
+      "Möchtest du das Turnier wirklich zurücksetzen? Alle bisherigen Kampfpaarungen, Ergebnisse und Runden werden gelöscht. Die Teilnehmerliste bleibt erhalten."
+    );
+
+    if (!confirmReset) return;
+
+    setIsResetting(true);
+    try {
+      await updateTournament({
+        registrationClosed: false,
+        registrationConfirmed: false,
+      });
+
+      const deleteMatches = matches.data.map((m) => matches.remove(m.id));
+      const deleteFightGroups = fightGroups.data.map((fg) => fightGroups.remove(fg.id));
+      await Promise.all([...deleteMatches, ...deleteFightGroups]);
+
+      const participantsToUpdate = participants.data.filter(
+        (p) => p.status && p.status !== 'active'
+      );
+      await Promise.all(
+        participantsToUpdate.map((p) =>
+          participants.update(p.id, { status: 'active' })
+        )
+      );
+
+      window.dispatchEvent(
+        new CustomEvent('tournament-reset-completed', {
+          detail: { tournamentId: currentTournamentId },
+        })
+      );
+    } catch (err) {
+      console.error("Error resetting tournament:", err);
+      alert("Fehler beim Zurücksetzen des Turniers.");
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   const displayName = user
     ? 'displayName' in user
@@ -89,6 +152,23 @@ export default function Navbar() {
             <LayoutDashboard size={16} />
             Turniere
           </Link>
+
+          {canReset && (
+            <button
+              onClick={handleResetTournament}
+              disabled={isResetting}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-kyokushin-red/30 text-kyokushin-red hover:bg-kyokushin-red/10 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ml-2"
+              title="Turnier zurücksetzen"
+            >
+              {isResetting ? (
+                <div className="w-4 h-4 border-2 border-kyokushin-red border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <RotateCcw size={16} />
+              )}
+              <span>Turnier zurücksetzen</span>
+            </button>
+          )}
+
 
           {user && (
             <div className="flex items-center gap-2 ml-4 pl-4 border-l border-kyokushin-border">

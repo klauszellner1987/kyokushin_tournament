@@ -12,7 +12,7 @@ import BracketView from '../components/Bracket/BracketView';
 import FightControl from '../components/FightControl/FightControl';
 import { computeWalkoverUpdates } from '../utils/walkover';
 import { countFinishedScheduledFights } from '../utils/matchProgress';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 
 type Tab = 'participants' | 'categories' | 'bracket' | 'control' | 'live';
 type StepState = 'completed' | 'next' | 'upcoming';
@@ -86,6 +86,20 @@ export default function TournamentDetail() {
   const { tournament, tournamentLoading, updateTournament, participants, categories, fightGroups, matches } =
     useTournamentData(id);
   const [activeTab, setActiveTab] = useState<Tab>('participants');
+
+  useEffect(() => {
+    const handleReset = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.tournamentId === id) {
+        setActiveTab('participants');
+      }
+    };
+    window.addEventListener('tournament-reset-completed', handleReset);
+    return () => {
+      window.removeEventListener('tournament-reset-completed', handleReset);
+    };
+  }, [id]);
+
 
   const confirmRegistration = useCallback(async () => {
     await updateTournament({ registrationConfirmed: true });
