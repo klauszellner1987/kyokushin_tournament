@@ -46,7 +46,7 @@ export default function Navbar() {
 
   const isHome = location.pathname === '/';
 
-  const match = location.pathname.match(/^\/tournament\/([^/]+)/);
+  const match = location.pathname.match(/\/tournament\/([^/]+)/);
   const currentTournamentId = match ? match[1] : null;
 
   const {
