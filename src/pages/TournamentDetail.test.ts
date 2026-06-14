@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getStepStates } from './TournamentDetail';
-import type { Category, Match } from '../types';
+import type { Category, Match, Participant } from '../types';
 
 function makeCategory(overrides: Partial<Category> = {}): Category {
   return {
@@ -94,7 +94,7 @@ describe('getStepStates', () => {
 
   it('shows "Kategorien prüfen / Auto-Kategorien" when there are unassigned participants', () => {
     const cat = makeCategory({ id: 'cat-1', name: 'Adults', discipline: 'kumite', roundsConfigured: true, ageMin: 18, ageMax: 39 });
-    const participant: any = {
+    const participant = {
       id: 'p-1',
       firstName: 'Child',
       lastName: 'One',
@@ -104,8 +104,8 @@ describe('getStepStates', () => {
       gender: 'M',
       discipline: ['kumite'],
       categoryIds: [],
-    };
-    const participant2: any = {
+    } as unknown as Participant;
+    const participant2 = {
       id: 'p-2',
       firstName: 'Child2',
       lastName: 'Two',
@@ -115,7 +115,7 @@ describe('getStepStates', () => {
       gender: 'W',
       discipline: ['kumite'],
       categoryIds: [],
-    };
+    } as unknown as Participant;
     const result = getStepStates([participant, participant2], [cat], false, [], true);
 
     expect(result.categories.state).toBe('next');
