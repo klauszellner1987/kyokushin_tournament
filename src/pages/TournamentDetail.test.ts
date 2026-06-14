@@ -92,6 +92,36 @@ describe('getStepStates', () => {
     expect(result.categories.hint).toBe('Sichtkontrolle durchführen');
   });
 
+  it('shows "Kategorien prüfen / Auto-Kategorien" when there are unassigned participants', () => {
+    const cat = makeCategory({ id: 'cat-1', name: 'Adults', discipline: 'kumite', roundsConfigured: true, ageMin: 18, ageMax: 39 });
+    const participant: any = {
+      id: 'p-1',
+      firstName: 'Child',
+      lastName: 'One',
+      birthDate: '2016-01-01', // age 10 in 2026, doesn't match age 18-39
+      weight: 30,
+      beltGrade: '10. Kyu',
+      gender: 'M',
+      discipline: ['kumite'],
+      categoryIds: [],
+    };
+    const participant2: any = {
+      id: 'p-2',
+      firstName: 'Child2',
+      lastName: 'Two',
+      birthDate: '2016-01-01',
+      weight: 32,
+      beltGrade: '10. Kyu',
+      gender: 'W',
+      discipline: ['kumite'],
+      categoryIds: [],
+    };
+    const result = getStepStates([participant, participant2], [cat], false, [], true);
+
+    expect(result.categories.state).toBe('next');
+    expect(result.categories.hint).toBe('Kategorien prüfen / Auto-Kategorien');
+  });
+
   it('marks categories complete when all conditions met', () => {
     const cat = makeCategory({ discipline: 'kumite', roundsConfigured: true });
     const result = getStepStates(5, [cat], true, [], true);

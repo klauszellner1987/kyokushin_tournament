@@ -5,13 +5,14 @@ import { useTournamentData } from '../hooks/useTournament';
 import { useTokens } from '../hooks/useTokens';
 import { useAuth } from '../contexts/AuthContext';
 import { TOURNAMENT_TYPE_LABELS } from '../types';
-import type { ParticipantStatus, Category, Match } from '../types';
+import type { ParticipantStatus, Category, Match, Participant } from '../types';
 import ParticipantManager from '../components/Registration/ParticipantManager';
 import CategoryManager from '../components/Categories/CategoryManager';
 import BracketView from '../components/Bracket/BracketView';
 import FightControl from '../components/FightControl/FightControl';
 import { computeWalkoverUpdates } from '../utils/walkover';
 import { countFinishedScheduledFights } from '../utils/matchProgress';
+import { autoAssign } from '../utils/groupAssignment';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 
 type Tab = 'participants' | 'categories' | 'bracket' | 'control' | 'live';
@@ -28,19 +29,34 @@ const tabs: { key: Tab; label: string; icon: typeof Users }[] = [
 const WORKFLOW_TABS: Tab[] = ['participants', 'categories', 'bracket', 'control'];
 
 export function getStepStates(
-  participantCount: number,
+  participantsOrCount: Participant[] | number,
   categoriesData: Category[],
   registrationConfirmed: boolean,
   matchesData: Match[],
   registrationClosed: boolean,
 ): Record<Tab, { state: StepState; hint?: string }> {
+  const isArray = Array.isArray(participantsOrCount);
+  const participantCount = isArray ? participantsOrCount.length : participantsOrCount;
   const hasEnoughParticipants = participantCount >= 2;
   const participantsComplete = hasEnoughParticipants && registrationClosed;
 
   const hasCategories = categoriesData.length > 0;
   const kumiteCategories = categoriesData.filter((c) => c.discipline === 'kumite');
   const allRoundsConfigured = kumiteCategories.length === 0 || kumiteCategories.every((c) => c.roundsConfigured);
-  const categoriesComplete = hasCategories && allRoundsConfigured && registrationConfirmed;
+
+  let hasUnassigned = false;
+  if (isArray && hasCategories) {
+    const { assignments } = autoAssign(participantsOrCount, categoriesData, registrationConfirmed);
+    const assignedIds = new Set(assignments.flatMap((a) => a.participantIds));
+    hasUnassigned = participantsOrCount.some(
+      (p) =>
+        (p.status ?? 'active') === 'active' &&
+        !assignedIds.has(p.id) &&
+        !p.categoryIds.includes('__no_fight__')
+    );
+  }
+
+  const categoriesComplete = hasCategories && allRoundsConfigured && registrationConfirmed && !hasUnassigned;
 
   const realMatches = matchesData.filter((m) => m.status !== 'bye');
   const hasBrackets = realMatches.length > 0;
@@ -52,7 +68,16 @@ export function getStepStates(
 
   const steps: [boolean, string][] = [
     [participantsComplete, participantHint],
-    [categoriesComplete, !hasCategories ? 'Kategorien erstellen' : !allRoundsConfigured ? 'Rundenablauf konfigurieren' : 'Sichtkontrolle durchführen'],
+    [
+      categoriesComplete,
+      !hasCategories
+        ? 'Kategorien erstellen'
+        : hasUnassigned
+          ? 'Kategorien prüfen / Auto-Kategorien'
+          : !allRoundsConfigured
+            ? 'Rundenablauf konfigurieren'
+            : 'Sichtkontrolle durchführen'
+    ],
     [hasBrackets, 'Turnierbäume generieren'],
     [allDone, 'Kämpfe austragen'],
   ];
@@ -238,7 +263,7 @@ export default function TournamentDetail() {
 
   const stepStates = useMemo(
     () => getStepStates(
-      participants.data.length,
+      participants.data,
       categories.data,
       tournament?.registrationConfirmed ?? false,
       matches.data,

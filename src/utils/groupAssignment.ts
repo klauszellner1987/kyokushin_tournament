@@ -111,3 +111,40 @@ export function autoAssign(
 
   return { assignments, warnings };
 }
+
+export function compareCategories(a: Category, b: Category): number {
+  if (a.discipline !== b.discipline) {
+    return a.discipline === 'kumite' ? -1 : 1;
+  }
+
+  const ageMinA = a.ageMin ?? 0;
+  const ageMinB = b.ageMin ?? 0;
+  if (ageMinA !== ageMinB) return ageMinA - ageMinB;
+
+  const ageMaxA = a.ageMax ?? 99;
+  const ageMaxB = b.ageMax ?? 99;
+  if (ageMaxA !== ageMaxB) return ageMaxA - ageMaxB;
+
+  const genderOrder: Record<string, number> = { M: 0, W: 1, mixed: 2 };
+  const genA = genderOrder[a.gender] ?? 0;
+  const genB = genderOrder[b.gender] ?? 0;
+  if (genA !== genB) return genA - genB;
+
+  const wMinA = a.weightMin ?? 0;
+  const wMinB = b.weightMin ?? 0;
+  if (wMinA !== wMinB) return wMinA - wMinB;
+
+  const wMaxA = a.weightMax ?? 999;
+  const wMaxB = b.weightMax ?? 999;
+  if (wMaxA !== wMaxB) return wMaxA - wMaxB;
+
+  const beltMinA = a.beltMin ? getBeltIndex(a.beltMin) : -1;
+  const beltMinB = b.beltMin ? getBeltIndex(b.beltMin) : -1;
+  if (beltMinA !== beltMinB) return beltMinA - beltMinB;
+
+  const beltMaxA = a.beltMax ? getBeltIndex(a.beltMax) : 99;
+  const beltMaxB = b.beltMax ? getBeltIndex(b.beltMax) : 99;
+  if (beltMaxA !== beltMaxB) return beltMaxA - beltMaxB;
+
+  return a.name.localeCompare(b.name, 'de', { sensitivity: 'base' });
+}

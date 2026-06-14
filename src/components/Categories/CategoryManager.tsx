@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, Pencil, Wand2, ChevronDown, ChevronRight, AlertTriangle, Users, Eye } from 'lucide-react';
 import type { Category, Participant, TournamentType, BeltGrade, KataSystem } from '../../types';
 import { BELT_GRADES, getAge } from '../../types';
-import { autoAssign } from '../../utils/groupAssignment';
+import { autoAssign, compareCategories } from '../../utils/groupAssignment';
 import CategoryReview from './CategoryReview';
 import ConfirmDialog from '../ui/ConfirmDialog';
 
@@ -116,10 +116,14 @@ export default function CategoryManager({ tournamentType, categories, participan
     return { ...t, categories: t.categories.filter((c) => c.discipline === tournamentType) };
   });
 
+  const sortedCategories = useMemo(() => {
+    return [...categories.data].sort(compareCategories);
+  }, [categories.data]);
+
   // Live auto-assignment: compute which participants belong to which category
   const { assignments, warnings } = useMemo(
-    () => autoAssign(participants, categories.data, registrationConfirmed),
-    [participants, categories.data, registrationConfirmed],
+    () => autoAssign(participants, sortedCategories, registrationConfirmed),
+    [participants, sortedCategories, registrationConfirmed],
   );
 
   const assignmentMap = useMemo(() => {
@@ -497,7 +501,7 @@ export default function CategoryManager({ tournamentType, categories, participan
 
       {/* Category cards with participant assignment */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {categories.data.map((c) => {
+        {sortedCategories.map((c) => {
           const assigned = assignmentMap.get(c.id) ?? [];
           const isExpanded = expandedCategories.has(c.id);
           const isEditing = editId === c.id && showForm;

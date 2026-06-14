@@ -16,7 +16,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { Check, X, RotateCcw, GripVertical, ArrowLeftRight, Users, AlertTriangle } from 'lucide-react';
 import type { Category, Participant } from '../../types';
 import { getAge } from '../../types';
-import { autoAssign } from '../../utils/groupAssignment';
+import { autoAssign, compareCategories } from '../../utils/groupAssignment';
 
 const UNASSIGNED_ID = '__unassigned__';
 const NO_FIGHT_ID = '__no_fight__';
@@ -157,9 +157,14 @@ function DroppableColumn({
 }
 
 export default function CategoryReview({ categories, participants, onSave, onClose }: Props) {
+  const sortedCategories = useMemo(
+    () => [...categories].sort(compareCategories),
+    [categories],
+  );
+
   const { assignments } = useMemo(
-    () => autoAssign(participants, categories),
-    [participants, categories],
+    () => autoAssign(participants, sortedCategories),
+    [participants, sortedCategories],
   );
 
   const initialDraft = useMemo(() => {
@@ -246,7 +251,7 @@ export default function CategoryReview({ categories, participants, onSave, onClo
     const isValidContainer =
       targetContainer === UNASSIGNED_ID ||
       targetContainer === NO_FIGHT_ID ||
-      categories.some((c) => c.id === targetContainer);
+      sortedCategories.some((c) => c.id === targetContainer);
 
     if (!isValidContainer) {
       const containerOfOverItem = findContainer(targetContainer);
@@ -278,7 +283,7 @@ export default function CategoryReview({ categories, participants, onSave, onClo
 
       for (const p of participants) {
         const assignedCatIds: string[] = [];
-        for (const cat of categories) {
+        for (const cat of sortedCategories) {
           if (draft[cat.id]?.includes(p.id)) {
             assignedCatIds.push(cat.id);
           }
@@ -298,14 +303,14 @@ export default function CategoryReview({ categories, participants, onSave, onClo
 
   const activeParticipant = activeId ? participantMap.get(activeId) : null;
 
-  const invalidCategories = categories.filter((c) => (draft[c.id] ?? []).length === 1);
+  const invalidCategories = sortedCategories.filter((c) => (draft[c.id] ?? []).length === 1);
   const allCategoriesValid = invalidCategories.length === 0;
   const unassignedCount = (draft[UNASSIGNED_ID] ?? []).length;
   const noUnassigned = unassignedCount === 0;
   const canSave = allCategoriesValid && noUnassigned;
 
   const columnOrder = [
-    ...categories.map((c) => c.id),
+    ...sortedCategories.map((c) => c.id),
     NO_FIGHT_ID,
     UNASSIGNED_ID,
   ];
@@ -388,7 +393,7 @@ export default function CategoryReview({ categories, participants, onSave, onClo
             {columnOrder.map((colId) => {
               const isUnassigned = colId === UNASSIGNED_ID;
               const isNoFight = colId === NO_FIGHT_ID;
-              const category = categories.find((c) => c.id === colId);
+              const category = sortedCategories.find((c) => c.id === colId);
               const title = isUnassigned ? 'Nicht zugeordnet' : isNoFight ? 'Kein Kampf' : (category?.name ?? '');
               const pids = draft[colId] ?? [];
 
