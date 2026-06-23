@@ -66,7 +66,7 @@ export default function Navbar() {
     currentTournamentId &&
     tournament &&
     participants.data.length > 0 &&
-    (tournament.registrationClosed || tournament.registrationConfirmed || matches.data.length > 0)
+    (tournament.registrationClosed || tournament.registrationConfirmed || matches.data.length > 0 || categories.data.length > 0)
   );
 
   const handleResetTournament = async () => {
