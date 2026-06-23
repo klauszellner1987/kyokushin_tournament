@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
-import { Plus, Upload, Download, Pencil, Trash2, Search, X, AlertTriangle, FileWarning, Lock, Unlock, CheckCircle2 } from 'lucide-react';
+import { Plus, Upload, Download, Pencil, Trash2, Search, X, AlertTriangle, FileWarning, Lock, Unlock, CheckCircle2, RotateCcw } from 'lucide-react';
 import type { Participant, Category, Discipline, BeltGrade, TournamentType, Match, ParticipantStatus } from '../../types';
 import { BELT_GRADES, BELT_COLORS } from '../../types';
 import DateInput from '../ui/DateInput';
@@ -60,7 +60,7 @@ function getDefaultDiscipline(type: TournamentType): Discipline[] {
   return ['kumite'];
 }
 
-export default function ParticipantManager({ tournamentType, participants, categories, matches, onWithdraw, registrationConfirmed, registrationClosed, onCloseRegistration, onReopenRegistration }: Props) {
+export default function ParticipantManager({ tournamentId, tournamentType, participants, categories, matches, onWithdraw, registrationConfirmed, registrationClosed, onCloseRegistration, onReopenRegistration }: Props) {
   const emptyForm: Omit<Participant, 'id'> = {
     firstName: '',
     lastName: '',
@@ -106,6 +106,52 @@ export default function ParticipantManager({ tournamentType, participants, categ
       alert("Fehler beim Wiederöffnen: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsReopening(false);
+    }
+  };
+
+  const hasBackup = useMemo(() => {
+    try {
+      return !!localStorage.getItem(`backup_participants_${tournamentId}`);
+    } catch {
+      return false;
+    }
+  }, [tournamentId]);
+
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const handleRestoreBackup = async () => {
+    const backupStr = localStorage.getItem(`backup_participants_${tournamentId}`);
+    if (!backupStr || isRestoring) return;
+
+    const confirm = window.confirm(
+      "Möchtest du die Teilnehmerliste aus dem automatischen Backup wiederherstellen? Dies fügt gelöschte oder fehlende Teilnehmer wieder hinzu."
+    );
+    if (!confirm) return;
+
+    setIsRestoring(true);
+    try {
+      const backupData = JSON.parse(backupStr) as Participant[];
+      let restoredCount = 0;
+      for (const p of backupData) {
+        const exists = participants.data.some(
+          (existing) =>
+            existing.firstName.toLowerCase() === p.firstName.toLowerCase() &&
+            existing.lastName.toLowerCase() === p.lastName.toLowerCase() &&
+            existing.club.toLowerCase() === p.club.toLowerCase()
+        );
+        if (!exists) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { id, ...dataWithoutId } = p;
+          await participants.add(dataWithoutId);
+          restoredCount++;
+        }
+      }
+      alert(`${restoredCount} Teilnehmer erfolgreich aus dem Backup wiederhergestellt.`);
+    } catch (err) {
+      console.error("Error restoring backup:", err);
+      alert("Fehler beim Wiederherstellen des Backups.");
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -695,6 +741,17 @@ export default function ParticipantManager({ tournamentType, participants, categ
               >
                 <Upload size={14} />
                 CSV Import
+              </button>
+            )}
+            {!registrationClosed && hasBackup && (
+              <button
+                onClick={handleRestoreBackup}
+                disabled={isRestoring}
+                className="flex items-center gap-2 bg-kyokushin-card border border-kyokushin-border hover:border-kyokushin-gold text-white px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Teilnehmer aus dem automatischen Backup vor dem letzten Reset wiederherstellen"
+              >
+                <RotateCcw size={14} className={`text-kyokushin-gold ${isRestoring ? 'animate-spin' : ''}`} />
+                {isRestoring ? 'Backup lädt...' : 'Backup laden'}
               </button>
             )}
             {!registrationClosed && participants.data.length >= 2 && (

@@ -80,6 +80,13 @@ export default function Navbar() {
 
     setIsResetting(true);
     try {
+      // 0. Create an automated local backup of the participants as a safety net
+      try {
+        localStorage.setItem(`backup_participants_${currentTournamentId}`, JSON.stringify(participants.data));
+      } catch (e) {
+        console.warn("Failed to create local participant backup:", e);
+      }
+
       // 1. Delete and reset everything first, in chunks to avoid Firestore rate limiting and browser request limits
       const categoriesToDelete = [...categories.data];
       const matchesToDelete = [...matches.data];

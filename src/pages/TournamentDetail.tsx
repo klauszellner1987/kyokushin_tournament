@@ -136,6 +136,13 @@ export default function TournamentDetail() {
   }, [updateTournament]);
 
   const reopenRegistration = useCallback(async () => {
+    // 0. Create an automated local backup of the participants as a safety net
+    try {
+      localStorage.setItem(`backup_participants_${id}`, JSON.stringify(participants.data));
+    } catch (e) {
+      console.warn("Failed to create local participant backup:", e);
+    }
+
     // 1. Delete and reset everything first, in chunks to avoid Firestore rate limiting and browser request limits
     const categoriesToDelete = [...categories.data];
     const fightGroupsToDelete = [...fightGroups.data];
@@ -151,7 +158,7 @@ export default function TournamentDetail() {
 
     // 2. Only update the tournament state after database cleanup is fully completed
     await updateTournament({ registrationClosed: false, registrationConfirmed: false });
-  }, [updateTournament, categories, fightGroups, matches, participants]);
+  }, [id, updateTournament, categories, fightGroups, matches, participants]);
 
   const withdrawParticipant = useCallback(async (participantId: string, status: ParticipantStatus) => {
     await participants.update(participantId, { status });
