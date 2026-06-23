@@ -4,6 +4,7 @@ import Kanku from './Kanku';
 import { useAuth } from '../../contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { useTournamentData } from '../../hooks/useTournament';
+import type { Participant } from '../../types';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -53,6 +54,7 @@ export default function Navbar() {
     tournament,
     updateTournament,
     participants,
+    categories,
     fightGroups,
     matches,
   } = useTournamentData(currentTournamentId ?? undefined);
@@ -82,18 +84,25 @@ export default function Navbar() {
         registrationConfirmed: false,
       });
 
+      const deleteCategories = categories.data.map((c) => categories.remove(c.id));
       const deleteMatches = matches.data.map((m) => matches.remove(m.id));
       const deleteFightGroups = fightGroups.data.map((fg) => fightGroups.remove(fg.id));
-      await Promise.all([...deleteMatches, ...deleteFightGroups]);
+      await Promise.all([...deleteCategories, ...deleteMatches, ...deleteFightGroups]);
 
-      const participantsToUpdate = participants.data.filter(
-        (p) => p.status && p.status !== 'active'
-      );
-      await Promise.all(
-        participantsToUpdate.map((p) =>
-          participants.update(p.id, { status: 'active' })
-        )
-      );
+      const participantsToUpdate = participants.data.map((p) => {
+        const updates: Partial<Participant> = {};
+        if (p.categoryIds && p.categoryIds.length > 0) {
+          updates.categoryIds = [];
+        }
+        if (p.status && p.status !== 'active') {
+          updates.status = 'active';
+        }
+        if (Object.keys(updates).length > 0) {
+          return participants.update(p.id, updates);
+        }
+        return Promise.resolve();
+      });
+      await Promise.all(participantsToUpdate);
 
       window.dispatchEvent(
         new CustomEvent('tournament-reset-completed', {

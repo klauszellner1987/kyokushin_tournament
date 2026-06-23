@@ -136,7 +136,21 @@ export default function TournamentDetail() {
 
   const reopenRegistration = useCallback(async () => {
     await updateTournament({ registrationClosed: false, registrationConfirmed: false });
-  }, [updateTournament]);
+
+    const deleteCategories = categories.data.map((c) => categories.remove(c.id));
+    const deleteFightGroups = fightGroups.data.map((fg) => fightGroups.remove(fg.id));
+    const deleteMatches = matches.data.map((m) => matches.remove(m.id));
+    const resetParticipants = participants.data
+      .filter((p) => p.categoryIds && p.categoryIds.length > 0)
+      .map((p) => participants.update(p.id, { categoryIds: [] }));
+
+    await Promise.all([
+      ...deleteCategories,
+      ...deleteFightGroups,
+      ...deleteMatches,
+      ...resetParticipants,
+    ]);
+  }, [updateTournament, categories, fightGroups, matches, participants]);
 
   const withdrawParticipant = useCallback(async (participantId: string, status: ParticipantStatus) => {
     await participants.update(participantId, { status });
