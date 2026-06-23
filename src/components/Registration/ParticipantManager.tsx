@@ -89,6 +89,25 @@ export default function ParticipantManager({ tournamentType, participants, categ
   const [deleteTarget, setDeleteTarget] = useState<Participant | null>(null);
   const [csvErrors, setCsvErrors] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isReopening, setIsReopening] = useState(false);
+
+  const handleReopen = async () => {
+    if (isReopening || !onReopenRegistration) return;
+    const confirm = window.confirm(
+      "Möchtest du die Anmeldung wirklich wieder öffnen? Dadurch werden alle erstellten Kategorien, Kampfgruppen, Kämpfe und Zuweisungen gelöscht."
+    );
+    if (!confirm) return;
+
+    setIsReopening(true);
+    try {
+      await onReopenRegistration();
+    } catch (err) {
+      console.error("Error during onReopenRegistration in ParticipantManager:", err);
+      alert("Fehler beim Wiederöffnen: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsReopening(false);
+    }
+  };
 
   const handleCsvExport = () => {
     if (participants.data.length === 0) {
@@ -801,11 +820,16 @@ export default function ParticipantManager({ tournamentType, participants, categ
               )}
             </span>
             <button
-              onClick={onReopenRegistration}
-              className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 transition-colors"
+              onClick={handleReopen}
+              disabled={isReopening}
+              className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <Unlock size={12} />
-              Wieder öffnen
+              {isReopening ? (
+                <div className="w-3 h-3 border border-amber-400 border-t-transparent rounded-full animate-spin shrink-0" />
+              ) : (
+                <Unlock size={12} className="shrink-0" />
+              )}
+              {isReopening ? 'Wird geöffnet...' : 'Wieder öffnen'}
             </button>
           </div>
         )}

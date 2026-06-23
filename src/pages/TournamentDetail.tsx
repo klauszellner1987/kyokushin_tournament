@@ -13,6 +13,7 @@ import FightControl from '../components/FightControl/FightControl';
 import { computeWalkoverUpdates } from '../utils/walkover';
 import { countFinishedScheduledFights } from '../utils/matchProgress';
 import { autoAssign } from '../utils/groupAssignment';
+import { runInChunks } from '../utils/promise';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 
 type Tab = 'participants' | 'categories' | 'bracket' | 'control' | 'live';
@@ -135,21 +136,21 @@ export default function TournamentDetail() {
   }, [updateTournament]);
 
   const reopenRegistration = useCallback(async () => {
+    // 1. Delete and reset everything first, in chunks to avoid Firestore rate limiting and browser request limits
+    const categoriesToDelete = [...categories.data];
+    const fightGroupsToDelete = [...fightGroups.data];
+    const matchesToDelete = [...matches.data];
+    const participantsToReset = participants.data.filter(
+      (p) => p.categoryIds && p.categoryIds.length > 0
+    );
+
+    await runInChunks(categoriesToDelete, (c) => categories.remove(c.id));
+    await runInChunks(fightGroupsToDelete, (fg) => fightGroups.remove(fg.id));
+    await runInChunks(matchesToDelete, (m) => matches.remove(m.id));
+    await runInChunks(participantsToReset, (p) => participants.update(p.id, { categoryIds: [] }));
+
+    // 2. Only update the tournament state after database cleanup is fully completed
     await updateTournament({ registrationClosed: false, registrationConfirmed: false });
-
-    const deleteCategories = categories.data.map((c) => categories.remove(c.id));
-    const deleteFightGroups = fightGroups.data.map((fg) => fightGroups.remove(fg.id));
-    const deleteMatches = matches.data.map((m) => matches.remove(m.id));
-    const resetParticipants = participants.data
-      .filter((p) => p.categoryIds && p.categoryIds.length > 0)
-      .map((p) => participants.update(p.id, { categoryIds: [] }));
-
-    await Promise.all([
-      ...deleteCategories,
-      ...deleteFightGroups,
-      ...deleteMatches,
-      ...resetParticipants,
-    ]);
   }, [updateTournament, categories, fightGroups, matches, participants]);
 
   const withdrawParticipant = useCallback(async (participantId: string, status: ParticipantStatus) => {

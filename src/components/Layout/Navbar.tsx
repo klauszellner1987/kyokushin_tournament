@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { useTournamentData } from '../../hooks/useTournament';
 import type { Participant } from '../../types';
+import { runInChunks } from '../../utils/promise';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -79,17 +80,18 @@ export default function Navbar() {
 
     setIsResetting(true);
     try {
-      await updateTournament({
-        registrationClosed: false,
-        registrationConfirmed: false,
+      // 1. Delete and reset everything first, in chunks to avoid Firestore rate limiting and browser request limits
+      const categoriesToDelete = [...categories.data];
+      const matchesToDelete = [...matches.data];
+      const fightGroupsToDelete = [...fightGroups.data];
+      const participantsToReset = participants.data.filter((p) => {
+        return (p.categoryIds && p.categoryIds.length > 0) || (p.status && p.status !== 'active');
       });
 
-      const deleteCategories = categories.data.map((c) => categories.remove(c.id));
-      const deleteMatches = matches.data.map((m) => matches.remove(m.id));
-      const deleteFightGroups = fightGroups.data.map((fg) => fightGroups.remove(fg.id));
-      await Promise.all([...deleteCategories, ...deleteMatches, ...deleteFightGroups]);
-
-      const participantsToUpdate = participants.data.map((p) => {
+      await runInChunks(categoriesToDelete, (c) => categories.remove(c.id));
+      await runInChunks(matchesToDelete, (m) => matches.remove(m.id));
+      await runInChunks(fightGroupsToDelete, (fg) => fightGroups.remove(fg.id));
+      await runInChunks(participantsToReset, (p) => {
         const updates: Partial<Participant> = {};
         if (p.categoryIds && p.categoryIds.length > 0) {
           updates.categoryIds = [];
@@ -97,12 +99,14 @@ export default function Navbar() {
         if (p.status && p.status !== 'active') {
           updates.status = 'active';
         }
-        if (Object.keys(updates).length > 0) {
-          return participants.update(p.id, updates);
-        }
-        return Promise.resolve();
+        return participants.update(p.id, updates);
       });
-      await Promise.all(participantsToUpdate);
+
+      // 2. Only update the tournament state after database cleanup is fully completed
+      await updateTournament({
+        registrationClosed: false,
+        registrationConfirmed: false,
+      });
 
       window.dispatchEvent(
         new CustomEvent('tournament-reset-completed', {
