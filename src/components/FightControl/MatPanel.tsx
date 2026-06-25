@@ -445,7 +445,7 @@ export default function MatPanel({
           <span className="text-lg font-bold text-white">Matte {matNumber}</span>
           {category && (
             <span className="bg-kyokushin-red/15 text-kyokushin-red text-xs px-2.5 py-1 rounded-full font-medium">
-              {category.name}
+              {category.name} {currentMatch?.poolName ? `(${currentMatch.poolName})` : ''}
             </span>
           )}
           {currentRound > 1 && (

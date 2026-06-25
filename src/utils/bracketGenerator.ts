@@ -260,3 +260,197 @@ export function getRoundLabel(round: number, totalRounds: number): string {
       return `Runde ${round}`;
   }
 }
+
+export function generatePoolSystem(
+  fightGroupId: string,
+  participantIds: string[],
+): Omit<Match, 'id'>[] {
+  if (!participantIds || participantIds.length < 2) {
+    console.warn(`[BracketGenerator] generatePoolSystem called with less than 2 participants for group ${fightGroupId}. Returning empty.`);
+    return [];
+  }
+
+  const shuffled = shuffle(participantIds);
+  const n = shuffled.length;
+  const half = Math.ceil(n / 2);
+
+  const poolAIds = shuffled.slice(0, half);
+  const poolBIds = shuffled.slice(half);
+
+  // Generate round robin for Pool A
+  const poolAMatches = generateRoundRobin(fightGroupId, poolAIds).map(m => ({
+    ...m,
+    poolName: 'Pool A',
+  }));
+
+  // Generate round robin for Pool B
+  const poolBMatches = generateRoundRobin(fightGroupId, poolBIds).map(m => ({
+    ...m,
+    poolName: 'Pool B',
+  }));
+
+  // Semifinals (Round 10, positions 0 and 1)
+  const sfMatches: Omit<Match, 'id'>[] = [
+    {
+      fightGroupId,
+      round: 10,
+      position: 0,
+      fighter1Id: null,
+      fighter2Id: null,
+      winnerId: null,
+      score1: 0,
+      score2: 0,
+      status: 'pending',
+      matNumber: 0,
+      scheduledOrder: 0,
+      poolName: 'Halbfinale',
+    },
+    {
+      fightGroupId,
+      round: 10,
+      position: 1,
+      fighter1Id: null,
+      fighter2Id: null,
+      winnerId: null,
+      score1: 0,
+      score2: 0,
+      status: 'pending',
+      matNumber: 0,
+      scheduledOrder: 0,
+      poolName: 'Halbfinale',
+    },
+  ];
+
+  // Final (Round 11, position 0)
+  const finalMatch: Omit<Match, 'id'>[] = [
+    {
+      fightGroupId,
+      round: 11,
+      position: 0,
+      fighter1Id: null,
+      fighter2Id: null,
+      winnerId: null,
+      score1: 0,
+      score2: 0,
+      status: 'pending',
+      matNumber: 0,
+      scheduledOrder: 0,
+      poolName: 'Finale',
+    },
+  ];
+
+  return [...poolAMatches, ...poolBMatches, ...sfMatches, ...finalMatch];
+}
+
+export function calculatePoolRankings(poolMatches: Match[]): string[] {
+  const statsMap = new Map<string, { wins: number; losses: number; pointsFor: number; pointsAgainst: number }>();
+
+  // Collect all unique participant IDs from the matches
+  for (const m of poolMatches) {
+    if (m.fighter1Id) statsMap.set(m.fighter1Id, { wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 });
+    if (m.fighter2Id) statsMap.set(m.fighter2Id, { wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 });
+  }
+
+  for (const m of poolMatches) {
+    if (m.status !== 'completed' && m.status !== 'walkover' && m.status !== 'disqualification') continue;
+
+    if (m.fighter1Id && m.fighter2Id) {
+      const s1 = statsMap.get(m.fighter1Id)!;
+      const s2 = statsMap.get(m.fighter2Id)!;
+
+      s1.pointsFor += m.score1;
+      s1.pointsAgainst += m.score2;
+      s2.pointsFor += m.score2;
+      s2.pointsAgainst += m.score1;
+
+      if (m.winnerId === m.fighter1Id) {
+        s1.wins++;
+        s2.losses++;
+      } else if (m.winnerId === m.fighter2Id) {
+        s2.wins++;
+        s1.losses++;
+      }
+    }
+  }
+
+  return Array.from(statsMap.entries())
+    .map(([id, stats]) => ({
+      id,
+      wins: stats.wins,
+      diff: stats.pointsFor - stats.pointsAgainst,
+      pointsFor: stats.pointsFor,
+    }))
+    .sort((a, b) => b.wins - a.wins || b.diff - a.diff || b.pointsFor - a.pointsFor)
+    .map(x => x.id);
+}
+
+export function getPoolAdvancementUpdates(allMatches: Match[]): { matchId: string; updates: Partial<Match> }[] {
+  const poolAMatches = allMatches.filter(m => m.poolName === 'Pool A');
+  const poolBMatches = allMatches.filter(m => m.poolName === 'Pool B');
+  const sf1 = allMatches.find(m => m.poolName === 'Halbfinale' && m.position === 0);
+  const sf2 = allMatches.find(m => m.poolName === 'Halbfinale' && m.position === 1);
+
+  if (!sf1 || !sf2) return [];
+
+  const finishedA = poolAMatches.length > 0 && poolAMatches.every(m => m.status === 'completed' || m.status === 'walkover' || m.status === 'disqualification');
+  const finishedB = poolBMatches.length > 0 && poolBMatches.every(m => m.status === 'completed' || m.status === 'walkover' || m.status === 'disqualification');
+
+  const rankA = finishedA ? calculatePoolRankings(poolAMatches) : [];
+  const rankB = finishedB ? calculatePoolRankings(poolBMatches) : [];
+
+  const targetSF1_f1 = rankA[0] || null; // 1st A
+  const targetSF1_f2 = rankB[1] || null; // 2nd B
+
+  const targetSF2_f1 = rankB[0] || null; // 1st B
+  const targetSF2_f2 = rankA[1] || null; // 2nd A
+
+  const updates: { matchId: string; updates: Partial<Match> }[] = [];
+
+  // SF1
+  if (sf1.fighter1Id !== targetSF1_f1 || sf1.fighter2Id !== targetSF1_f2) {
+    const sf1Updates: Partial<Match> = {
+      fighter1Id: targetSF1_f1,
+      fighter2Id: targetSF1_f2,
+    };
+    if (sf1.status !== 'pending' || sf1.winnerId || sf1.score1 || sf1.score2) {
+      sf1Updates.status = 'pending';
+      sf1Updates.winnerId = null;
+      sf1Updates.score1 = 0;
+      sf1Updates.score2 = 0;
+      sf1Updates.timerEndsAt = undefined;
+      sf1Updates.timerPausedRemaining = undefined;
+      sf1Updates.fightRound = undefined;
+      sf1Updates.isExtension = undefined;
+    }
+    updates.push({ matchId: sf1.id, updates: sf1Updates });
+
+    const sf1Clone = { ...sf1, ...sf1Updates };
+    const cascades = collectCascadeResets(allMatches, sf1Clone);
+    updates.push(...cascades);
+  }
+
+  // SF2
+  if (sf2.fighter1Id !== targetSF2_f1 || sf2.fighter2Id !== targetSF2_f2) {
+    const sf2Updates: Partial<Match> = {
+      fighter1Id: targetSF2_f1,
+      fighter2Id: targetSF2_f2,
+    };
+    if (sf2.status !== 'pending' || sf2.winnerId || sf2.score1 || sf2.score2) {
+      sf2Updates.status = 'pending';
+      sf2Updates.winnerId = null;
+      sf2Updates.score1 = 0;
+      sf2Updates.score2 = 0;
+      sf2Updates.timerEndsAt = undefined;
+      sf2Updates.timerPausedRemaining = undefined;
+      sf2Updates.fightRound = undefined;
+      sf2Updates.isExtension = undefined;
+    }
+    updates.push({ matchId: sf2.id, updates: sf2Updates });
+
+    const sf2Clone = { ...sf2, ...sf2Updates };
+    const cascades = collectCascadeResets(allMatches, sf2Clone);
+    updates.push(...cascades);
+  }
+
+  return updates;
+}

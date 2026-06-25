@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, Pencil, Wand2, ChevronDown, ChevronRight, AlertTriangle, Users, Eye } from 'lucide-react';
-import type { Category, Participant, TournamentType, BeltGrade, KataSystem } from '../../types';
+import type { Category, Participant, TournamentType, BeltGrade, KataSystem, TournamentFormat } from '../../types';
 import { BELT_GRADES, getAge } from '../../types';
 import { autoAssign, compareCategories } from '../../utils/groupAssignment';
 import CategoryReview from './CategoryReview';
@@ -25,6 +25,7 @@ function getFormatLabel(discipline: string, format: string, kataSystem?: string)
   if (discipline === 'kata') {
     return (kataSystem ?? 'points') === 'flag' ? 'K.O. (Flaggensystem)' : 'Round Robin (Punktesystem)';
   }
+  if (format === 'pool_system') return 'Pool-System (Gruppen + Halbfinale)';
   return format === 'round_robin' ? 'Jeder gegen Jeden (Round Robin)' : 'K.O.-System (Single Elimination)';
 }
 
@@ -311,11 +312,12 @@ export default function CategoryManager({ tournamentType, categories, participan
               <label className="block text-xs text-kyokushin-text-muted mb-1 font-semibold">Turnierformat</label>
               <select
                 value={form.tournamentFormat}
-                onChange={(e) => setForm({ ...form, tournamentFormat: e.target.value as 'single_elimination' | 'round_robin' })}
+                onChange={(e) => setForm({ ...form, tournamentFormat: e.target.value as TournamentFormat })}
                 className="w-full md:w-1/2 bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-kyokushin-red"
               >
                 <option value="single_elimination">K.O.-System (Single Elimination)</option>
                 <option value="round_robin">Jeder gegen Jeden (Round Robin)</option>
+                <option value="pool_system">Pool-System (Gruppen + Halbfinale)</option>
               </select>
             </div>
 

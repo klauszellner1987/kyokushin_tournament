@@ -75,7 +75,7 @@ export const BELT_COLORS: Record<string, string> = {
   '10. Dan': '#1a1a1a',
 };
 
-export type TournamentFormat = 'single_elimination' | 'round_robin';
+export type TournamentFormat = 'single_elimination' | 'round_robin' | 'pool_system';
 
 export type KataSystem = 'flag' | 'points';
 
@@ -106,6 +106,7 @@ export interface FightGroup {
   categoryId: string;
   participantIds: string[];
   status: 'pending' | 'running' | 'completed';
+  poolName?: string;
 }
 
 export type MatchStatus = 'pending' | 'running' | 'completed' | 'bye' | 'walkover' | 'disqualification';
@@ -128,6 +129,7 @@ export interface Match {
   timerPausedRemaining?: number;
   isExtension?: boolean;
   fightRound?: number;
+  poolName?: string;
 }
 
 export function getAge(birthDate: string): number {

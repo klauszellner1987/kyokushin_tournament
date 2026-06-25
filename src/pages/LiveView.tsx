@@ -450,7 +450,9 @@ function OverviewView({
     if (!m) return null;
     const group = fightGroupsData.find((g) => g.id === m.fightGroupId);
     if (!group) return null;
-    return categoriesData.find((c) => c.id === group.categoryId)?.name ?? null;
+    const catName = categoriesData.find((c) => c.id === group.categoryId)?.name ?? null;
+    if (!catName) return null;
+    return m.poolName ? `${catName} (${m.poolName})` : catName;
   };
 
   const currentMatchIds = new Set(
@@ -655,7 +657,9 @@ export default function LiveView() {
     if (!m) return null;
     const group = fightGroups.data.find((g) => g.id === m.fightGroupId);
     if (!group) return null;
-    return categories.data.find((c) => c.id === group.categoryId)?.name ?? null;
+    const catName = categories.data.find((c) => c.id === group.categoryId)?.name ?? null;
+    if (!catName) return null;
+    return m.poolName ? `${catName} (${m.poolName})` : catName;
   };
 
   // Per-mat view

@@ -2,7 +2,15 @@ import { useState, useMemo, useCallback } from 'react';
 import { Play, AlertTriangle, Trophy, ArrowLeft, Users, CheckCircle, Clock, Circle, Medal, Scale } from 'lucide-react';
 import type { Category, FightGroup, Match, Participant } from '../../types';
 import { autoAssign } from '../../utils/groupAssignment';
-import { generateSingleElimination, generateRoundRobin, advanceWinner, collectCascadeResets, countDownstreamResets, hasRunningDownstream } from '../../utils/bracketGenerator';
+import {
+  generateSingleElimination,
+  generateRoundRobin,
+  advanceWinner,
+  collectCascadeResets,
+  countDownstreamResets,
+  hasRunningDownstream,
+  generatePoolSystem,
+} from '../../utils/bracketGenerator';
 import { distributeCategoriesToMats, scheduleMatchesToMats } from '../../utils/matScheduler';
 import BracketTree from './BracketTree';
 import TouchScorePicker from '../ui/TouchScorePicker';
@@ -31,6 +39,7 @@ function getFormatLabel(cat: Category): string {
   if (cat.discipline === 'kata') {
     return (cat.kataSystem ?? 'points') === 'flag' ? 'K.O. (Flagge)' : 'Round Robin (Punkte)';
   }
+  if (cat.tournamentFormat === 'pool_system') return 'Pool-System (Gruppen + Halbfinale)';
   return cat.tournamentFormat === 'round_robin' ? 'Jeder gegen Jeden (Round Robin)' : 'K.O.-System (Single Elimination)';
 }
 
@@ -89,6 +98,199 @@ export default function BracketView({
     const s = p?.status ?? 'active';
     return s === 'withdrawn' || s === 'injured' || s === 'disqualified';
   }, [participantMap]);
+
+  const getPoolRanking = useCallback((poolMatches: Match[]) => {
+    if (poolMatches.length === 0) return [];
+
+    const statsMap = new Map<string, { wins: number; losses: number; pointsFor: number; pointsAgainst: number }>();
+
+    for (const m of poolMatches) {
+      if (m.fighter1Id) statsMap.set(m.fighter1Id, { wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 });
+      if (m.fighter2Id) statsMap.set(m.fighter2Id, { wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 });
+    }
+
+    for (const m of poolMatches) {
+      if (m.status !== 'completed' && m.status !== 'walkover' && m.status !== 'disqualification') continue;
+
+      if (m.fighter1Id && m.fighter2Id) {
+        const s1 = statsMap.get(m.fighter1Id)!;
+        const s2 = statsMap.get(m.fighter2Id)!;
+
+        s1.pointsFor += m.score1;
+        s1.pointsAgainst += m.score2;
+        s2.pointsFor += m.score2;
+        s2.pointsAgainst += m.score1;
+
+        if (m.winnerId === m.fighter1Id) {
+          s1.wins++;
+          s2.losses++;
+        } else if (m.winnerId === m.fighter2Id) {
+          s2.wins++;
+          s1.losses++;
+        }
+      }
+    }
+
+    return Array.from(statsMap.entries())
+      .map(([id, s]) => ({
+        participantId: id,
+        name: getName(id),
+        club: getClub(id),
+        wins: s.wins,
+        losses: s.losses,
+        pointsFor: s.pointsFor,
+        pointsAgainst: s.pointsAgainst,
+        diff: s.pointsFor - s.pointsAgainst,
+      }))
+      .sort((a, b) => b.wins - a.wins || b.diff - a.diff || b.pointsFor - a.pointsFor);
+  }, [getName, getClub]);
+
+  const renderRankingTable = (ranking: ReturnType<typeof getPoolRanking>) => (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-kyokushin-border">
+            <th className="text-left px-4 py-3 text-kyokushin-text-muted font-medium w-16">Platz</th>
+            <th className="text-left px-4 py-3 text-kyokushin-text-muted font-medium">Name</th>
+            <th className="text-left px-4 py-3 text-kyokushin-text-muted font-medium">Dojo</th>
+            <th className="text-center px-4 py-3 text-kyokushin-text-muted font-medium">Siege</th>
+            <th className="text-center px-4 py-3 text-kyokushin-text-muted font-medium">Niederl.</th>
+            <th className="text-center px-4 py-3 text-kyokushin-text-muted font-medium">Punkte</th>
+            <th className="text-center px-4 py-3 text-kyokushin-text-muted font-medium">Differenz</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ranking.map((entry, i) => {
+            const placeColor =
+              i === 0 ? 'text-kyokushin-gold' :
+              i === 1 ? 'text-gray-300' :
+              i === 2 ? 'text-amber-600' :
+              'text-kyokushin-text-muted';
+            const rowAccent =
+              i === 0 ? 'border-l-2 border-l-kyokushin-gold' :
+              i === 1 ? 'border-l-2 border-l-gray-400' :
+              i === 2 ? 'border-l-2 border-l-amber-700' :
+              '';
+            return (
+              <tr
+                key={entry.participantId}
+                className={`border-b border-kyokushin-border/50 hover:bg-kyokushin-card-hover ${rowAccent}`}
+              >
+                <td className={`px-4 py-3 font-bold ${placeColor}`}>{i + 1}</td>
+                <td className="px-4 py-3 text-white font-medium">{entry.name}</td>
+                <td className="px-4 py-3 text-kyokushin-text">{entry.club}</td>
+                <td className="px-4 py-3 text-center text-green-400 font-medium">{entry.wins}</td>
+                <td className="px-4 py-3 text-center text-kyokushin-text-muted">{entry.losses}</td>
+                <td className="px-4 py-3 text-center text-white">{entry.pointsFor}:{entry.pointsAgainst}</td>
+                <td className={`px-4 py-3 text-center font-medium ${entry.diff > 0 ? 'text-green-400' : entry.diff < 0 ? 'text-red-400' : 'text-kyokushin-text-muted'}`}>
+                  {entry.diff > 0 ? '+' : ''}{entry.diff}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderMatchesTable = (matchesList: Match[]) => (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-kyokushin-border">
+            <th className="text-left px-4 py-3 text-kyokushin-text-muted font-medium w-16">Runde</th>
+            {category?.tournamentFormat === 'pool_system' && (
+              <th className="text-left px-4 py-3 text-kyokushin-text-muted font-medium w-24">Pool</th>
+            )}
+            <th className="text-left px-4 py-3 text-kyokushin-text-muted font-medium">Kämpfer 1</th>
+            <th className="text-center px-4 py-3 text-kyokushin-text-muted font-medium">vs</th>
+            <th className="text-left px-4 py-3 text-kyokushin-text-muted font-medium">Kämpfer 2</th>
+            <th className="text-center px-4 py-3 text-kyokushin-text-muted font-medium">Ergebnis</th>
+            <th className="text-right px-4 py-3 text-kyokushin-text-muted font-medium">Aktion</th>
+          </tr>
+        </thead>
+        <tbody>
+          {matchesList.map((m) => (
+            <tr
+              key={m.id}
+              className={`border-b border-kyokushin-border/50 hover:bg-kyokushin-card-hover ${m.status === 'walkover' ? 'bg-amber-500/5' : m.status === 'disqualification' ? 'bg-red-500/5' : ''}`}
+            >
+              <td className="px-4 py-3 text-kyokushin-text-muted">{m.round}</td>
+              {category?.tournamentFormat === 'pool_system' && (
+                <td className="px-4 py-3 text-white font-medium">{m.poolName}</td>
+              )}
+              <td className={`px-4 py-3 ${m.winnerId === m.fighter1Id && m.winnerId !== null ? 'text-kyokushin-gold font-bold' : 'text-white'}`}>
+                <span className={isWithdrawn(m.fighter1Id) ? 'line-through opacity-60' : ''}>
+                  {getName(m.fighter1Id)}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-center text-kyokushin-red font-bold">VS</td>
+              <td className={`px-4 py-3 ${m.winnerId === m.fighter2Id && m.winnerId !== null ? 'text-kyokushin-gold font-bold' : 'text-white'}`}>
+                <span className={isWithdrawn(m.fighter2Id) ? 'line-through opacity-60' : ''}>
+                  {getName(m.fighter2Id)}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-center text-white">
+                {m.status === 'walkover'
+                  ? <span className="text-amber-400 font-medium">W.O.</span>
+                  : m.status === 'disqualification'
+                    ? <span className="text-red-400 font-medium">DSQ</span>
+                    : m.status === 'completed' ? `${m.score1} : ${m.score2}` : '-'}
+              </td>
+              <td className="px-4 py-3 text-right">
+                <div className="flex items-center justify-end gap-2">
+                  {m.weightDifference && (
+                    <span className="text-[10px] bg-kyokushin-bg px-1.5 py-0.5 rounded text-kyokushin-text-muted">
+                      +{m.weightDifference} kg
+                    </span>
+                  )}
+                  {m.fighter1Id && m.fighter2Id && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setWeightEditMatch(weightEditMatch === m.id ? null : m.id); setWeightValue(m.weightDifference?.toString() ?? ''); }}
+                      className="text-kyokushin-text-muted hover:text-white transition-colors"
+                      title="Gewichtsunterschied"
+                    >
+                      <Scale size={12} />
+                    </button>
+                  )}
+                  {m.status !== 'completed' && m.status !== 'walkover' && m.status !== 'disqualification' && m.fighter1Id && m.fighter2Id && (
+                    <button
+                      onClick={() => { setResultModal(m); setScore1(0); setScore2(0); }}
+                      className="text-kyokushin-red hover:text-kyokushin-gold text-xs font-medium transition-colors"
+                    >
+                      Ergebnis
+                    </button>
+                  )}
+                  {m.status === 'completed' && (
+                    <button
+                      onClick={() => { setCorrectionModal(m); setCorrScore1(m.score1); setCorrScore2(m.score2); }}
+                      className="text-amber-400 hover:text-amber-300 text-xs font-medium transition-colors"
+                    >
+                      Korrigieren
+                    </button>
+                  )}
+                </div>
+                {weightEditMatch === m.id && (
+                  <div className="flex items-center gap-1 mt-1 justify-end">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={weightValue}
+                      onChange={(e) => setWeightValue(e.target.value)}
+                      placeholder="kg"
+                      className="w-16 bg-kyokushin-bg border border-kyokushin-border rounded px-1.5 py-0.5 text-white text-xs focus:outline-none focus:border-kyokushin-red"
+                    />
+                    <button onClick={() => handleWeightSave(m.id)} className="text-green-400 hover:text-green-300 text-xs font-medium">OK</button>
+                  </div>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 
   const getMatchesForCategory = useCallback((categoryId: string): Match[] => {
     const groups = fightGroups.data.filter((g) => g.categoryId === categoryId);
@@ -169,47 +371,14 @@ export default function BracketView({
 
   const roundRobinRanking = useMemo(() => {
     if (category?.tournamentFormat !== 'round_robin' || matchesForCategory.length === 0) return [];
+    return getPoolRanking(matchesForCategory);
+  }, [matchesForCategory, category, getPoolRanking]);
 
-    const statsMap = new Map<string, { wins: number; losses: number; pointsFor: number; pointsAgainst: number }>();
-
-    for (const m of matchesForCategory) {
-      if (m.status !== 'completed' && m.status !== 'walkover' && m.status !== 'disqualification') continue;
-
-      for (const fId of [m.fighter1Id, m.fighter2Id]) {
-        if (fId && !statsMap.has(fId)) {
-          statsMap.set(fId, { wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 });
-        }
-      }
-
-      if (m.fighter1Id) {
-        const s = statsMap.get(m.fighter1Id)!;
-        s.pointsFor += m.score1;
-        s.pointsAgainst += m.score2;
-        if (m.winnerId === m.fighter1Id) s.wins++;
-        else s.losses++;
-      }
-      if (m.fighter2Id) {
-        const s = statsMap.get(m.fighter2Id)!;
-        s.pointsFor += m.score2;
-        s.pointsAgainst += m.score1;
-        if (m.winnerId === m.fighter2Id) s.wins++;
-        else s.losses++;
-      }
-    }
-
-    return Array.from(statsMap.entries())
-      .map(([id, s]) => ({
-        participantId: id,
-        name: getName(id),
-        club: getClub(id),
-        wins: s.wins,
-        losses: s.losses,
-        pointsFor: s.pointsFor,
-        pointsAgainst: s.pointsAgainst,
-        diff: s.pointsFor - s.pointsAgainst,
-      }))
-      .sort((a, b) => b.wins - a.wins || b.diff - a.diff || b.pointsFor - a.pointsFor);
-  }, [matchesForCategory, category, getName, getClub]);
+  const poolAMatches = useMemo(() => matchesForCategory.filter(m => m.poolName === 'Pool A'), [matchesForCategory]);
+  const poolBMatches = useMemo(() => matchesForCategory.filter(m => m.poolName === 'Pool B'), [matchesForCategory]);
+  const koMatches = useMemo(() => matchesForCategory.filter(m => m.poolName === 'Halbfinale' || m.poolName === 'Finale'), [matchesForCategory]);
+  const poolARanking = useMemo(() => getPoolRanking(poolAMatches), [poolAMatches, getPoolRanking]);
+  const poolBRanking = useMemo(() => getPoolRanking(poolBMatches), [poolBMatches, getPoolRanking]);
 
   const handleGenerateRequest = () => {
     if (!category) return;
@@ -250,8 +419,9 @@ export default function BracketView({
     });
 
     let generatedMatches: Omit<Match, 'id'>[];
-    const useRoundRobin = category.tournamentFormat === 'round_robin' && (category.kataSystem ?? 'points') !== 'flag';
-    if (useRoundRobin) {
+    if (category.tournamentFormat === 'pool_system') {
+      generatedMatches = generatePoolSystem(groupId, assignment.participantIds);
+    } else if (category.tournamentFormat === 'round_robin' && (category.kataSystem ?? 'points') !== 'flag') {
       generatedMatches = generateRoundRobin(groupId, assignment.participantIds);
     } else {
       generatedMatches = generateSingleElimination(groupId, assignment.participantIds);
@@ -726,96 +896,7 @@ export default function BracketView({
           </div>
 
           <div className="bg-kyokushin-card border border-kyokushin-border rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-kyokushin-border">
-                  <th className="text-left px-4 py-3 text-kyokushin-text-muted font-medium">Runde</th>
-                  <th className="text-left px-4 py-3 text-kyokushin-text-muted font-medium">Kämpfer 1</th>
-                  <th className="text-center px-4 py-3 text-kyokushin-text-muted font-medium">vs</th>
-                  <th className="text-left px-4 py-3 text-kyokushin-text-muted font-medium">Kämpfer 2</th>
-                  <th className="text-center px-4 py-3 text-kyokushin-text-muted font-medium">Ergebnis</th>
-                  <th className="text-right px-4 py-3 text-kyokushin-text-muted font-medium">Aktion</th>
-                </tr>
-              </thead>
-              <tbody>
-                {matchesForCategory
-                  .sort((a, b) => a.round - b.round || a.position - b.position)
-                  .map((m) => (
-                    <tr
-                      key={m.id}
-                      className={`border-b border-kyokushin-border/50 hover:bg-kyokushin-card-hover ${m.status === 'walkover' ? 'bg-amber-500/5' : m.status === 'disqualification' ? 'bg-red-500/5' : ''}`}
-                    >
-                      <td className="px-4 py-3 text-kyokushin-text-muted">{m.round}</td>
-                      <td className={`px-4 py-3 ${m.winnerId === m.fighter1Id ? 'text-kyokushin-gold font-bold' : 'text-white'}`}>
-                        <span className={isWithdrawn(m.fighter1Id) ? 'line-through opacity-60' : ''}>
-                          {getName(m.fighter1Id)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center text-kyokushin-red font-bold">VS</td>
-                      <td className={`px-4 py-3 ${m.winnerId === m.fighter2Id ? 'text-kyokushin-gold font-bold' : 'text-white'}`}>
-                        <span className={isWithdrawn(m.fighter2Id) ? 'line-through opacity-60' : ''}>
-                          {getName(m.fighter2Id)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center text-white">
-                        {m.status === 'walkover'
-                          ? <span className="text-amber-400 font-medium">W.O.</span>
-                          : m.status === 'disqualification'
-                            ? <span className="text-red-400 font-medium">DSQ</span>
-                            : m.status === 'completed' ? `${m.score1} : ${m.score2}` : '-'}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {m.weightDifference && (
-                            <span className="text-[10px] bg-kyokushin-bg px-1.5 py-0.5 rounded text-kyokushin-text-muted">
-                              +{m.weightDifference} kg
-                            </span>
-                          )}
-                          {m.fighter1Id && m.fighter2Id && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setWeightEditMatch(weightEditMatch === m.id ? null : m.id); setWeightValue(m.weightDifference?.toString() ?? ''); }}
-                              className="text-kyokushin-text-muted hover:text-white transition-colors"
-                              title="Gewichtsunterschied"
-                            >
-                              <Scale size={12} />
-                            </button>
-                          )}
-                          {m.status !== 'completed' && m.status !== 'walkover' && m.status !== 'disqualification' && m.fighter1Id && m.fighter2Id && (
-                            <button
-                              onClick={() => { setResultModal(m); setScore1(0); setScore2(0); }}
-                              className="text-kyokushin-red hover:text-kyokushin-gold text-xs font-medium transition-colors"
-                            >
-                              Ergebnis
-                            </button>
-                          )}
-                          {(m.status === 'completed') && (
-                            <button
-                              onClick={() => { setCorrectionModal(m); setCorrScore1(m.score1); setCorrScore2(m.score2); }}
-                              className="text-amber-400 hover:text-amber-300 text-xs font-medium transition-colors"
-                            >
-                              Korrigieren
-                            </button>
-                          )}
-                        </div>
-                        {weightEditMatch === m.id && (
-                          <div className="flex items-center gap-1 mt-1 justify-end">
-                            <input
-                              type="number"
-                              step="0.1"
-                              min="0"
-                              value={weightValue}
-                              onChange={(e) => setWeightValue(e.target.value)}
-                              placeholder="kg"
-                              className="w-16 bg-kyokushin-bg border border-kyokushin-border rounded px-1.5 py-0.5 text-white text-xs focus:outline-none focus:border-kyokushin-red"
-                            />
-                            <button onClick={() => handleWeightSave(m.id)} className="text-green-400 hover:text-green-300 text-xs font-medium">OK</button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
+            {renderMatchesTable(matchesForCategory.sort((a, b) => a.round - b.round || a.position - b.position))}
           </div>
 
           {roundRobinRanking.length > 0 && (() => {
@@ -863,54 +944,74 @@ export default function BracketView({
                 <div>
                   <h4 className="text-sm font-medium text-kyokushin-text-muted mb-4">Rangliste</h4>
                   <div className="bg-kyokushin-card border border-kyokushin-border rounded-xl overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-kyokushin-border">
-                          <th className="text-left px-4 py-3 text-kyokushin-text-muted font-medium w-16">Platz</th>
-                          <th className="text-left px-4 py-3 text-kyokushin-text-muted font-medium">Name</th>
-                          <th className="text-left px-4 py-3 text-kyokushin-text-muted font-medium">Dojo</th>
-                          <th className="text-center px-4 py-3 text-kyokushin-text-muted font-medium">Siege</th>
-                          <th className="text-center px-4 py-3 text-kyokushin-text-muted font-medium">Niederl.</th>
-                          <th className="text-center px-4 py-3 text-kyokushin-text-muted font-medium">Punkte</th>
-                          <th className="text-center px-4 py-3 text-kyokushin-text-muted font-medium">Differenz</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {roundRobinRanking.map((entry, i) => {
-                          const placeColor =
-                            i === 0 ? 'text-kyokushin-gold' :
-                            i === 1 ? 'text-gray-300' :
-                            i === 2 ? 'text-amber-600' :
-                            'text-kyokushin-text-muted';
-                          const rowAccent =
-                            i === 0 ? 'border-l-2 border-l-kyokushin-gold' :
-                            i === 1 ? 'border-l-2 border-l-gray-400' :
-                            i === 2 ? 'border-l-2 border-l-amber-700' :
-                            '';
-                          return (
-                            <tr
-                              key={entry.participantId}
-                              className={`border-b border-kyokushin-border/50 hover:bg-kyokushin-card-hover ${rowAccent}`}
-                            >
-                              <td className={`px-4 py-3 font-bold ${placeColor}`}>{i + 1}</td>
-                              <td className="px-4 py-3 text-white font-medium">{entry.name}</td>
-                              <td className="px-4 py-3 text-kyokushin-text">{entry.club}</td>
-                              <td className="px-4 py-3 text-center text-green-400 font-medium">{entry.wins}</td>
-                              <td className="px-4 py-3 text-center text-kyokushin-text-muted">{entry.losses}</td>
-                              <td className="px-4 py-3 text-center text-white">{entry.pointsFor}:{entry.pointsAgainst}</td>
-                              <td className={`px-4 py-3 text-center font-medium ${entry.diff > 0 ? 'text-green-400' : entry.diff < 0 ? 'text-red-400' : 'text-kyokushin-text-muted'}`}>
-                                {entry.diff > 0 ? '+' : ''}{entry.diff}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                    {renderRankingTable(roundRobinRanking)}
                   </div>
                 </div>
               </>
             );
           })()}
+        </div>
+      ) : category?.tournamentFormat === 'pool_system' ? (
+        <div className="space-y-8">
+          {/* Pools Standings side-by-side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Pool A Card */}
+            <div className="bg-kyokushin-card border border-kyokushin-border rounded-xl p-5">
+              <h4 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                Pool A (Tabelle)
+              </h4>
+              {renderRankingTable(poolARanking)}
+            </div>
+
+            {/* Pool B Card */}
+            <div className="bg-kyokushin-card border border-kyokushin-border rounded-xl p-5">
+              <h4 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                Pool B (Tabelle)
+              </h4>
+              {renderRankingTable(poolBRanking)}
+            </div>
+          </div>
+
+          {/* Group Matches Table */}
+          <div className="bg-kyokushin-card border border-kyokushin-border rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-kyokushin-border bg-kyokushin-bg/30">
+              <h4 className="text-sm font-bold text-white uppercase tracking-wider">
+                Gruppenphase (Pool A & Pool B) Spiele
+              </h4>
+            </div>
+            {renderMatchesTable([...poolAMatches, ...poolBMatches].sort((a, b) => a.round - b.round || (a.poolName ?? '').localeCompare(b.poolName ?? '')))}
+          </div>
+
+          {/* KO Endrunde */}
+          <div className="bg-kyokushin-card border border-kyokushin-border rounded-xl p-5">
+            <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-6 pb-3 border-b border-kyokushin-border/50">
+              K.O.-Endrunde (Halbfinale & Finale)
+            </h4>
+            {correctionError && (
+              <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
+                <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-400">{correctionError}</p>
+                <button onClick={() => setCorrectionError(null)} className="ml-auto text-kyokushin-text-muted hover:text-white shrink-0">
+                  <span className="text-lg leading-none">&times;</span>
+                </button>
+              </div>
+            )}
+            <BracketTree
+              matches={koMatches}
+              totalRounds={11}
+              getName={getName}
+              getClub={getClub}
+              isWithdrawn={isWithdrawn}
+              onMatchClick={(m) => {
+                setResultModal(m);
+                setScore1(0);
+                setScore2(0);
+              }}
+              onCorrectMatch={handleOpenCorrection}
+            />
+          </div>
         </div>
       ) : (
         <>

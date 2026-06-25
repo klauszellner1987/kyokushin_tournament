@@ -14,6 +14,7 @@ import { computeWalkoverUpdates } from '../utils/walkover';
 import { countFinishedScheduledFights } from '../utils/matchProgress';
 import { autoAssign } from '../utils/groupAssignment';
 import { runInChunks } from '../utils/promise';
+import { getPoolAdvancementUpdates } from '../utils/bracketGenerator';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 
 type Tab = 'participants' | 'categories' | 'bracket' | 'control' | 'live';
@@ -112,6 +113,36 @@ export default function TournamentDetail() {
   const { tournament, tournamentLoading, updateTournament, participants, categories, fightGroups, matches } =
     useTournamentData(id);
   const [activeTab, setActiveTab] = useState<Tab>('participants');
+
+  const wrappedMatches = useMemo(() => {
+    return {
+      ...matches,
+      update: async (matchId: string, updates: Partial<Match>) => {
+        // Perform the standard update first
+        await matches.update(matchId, updates);
+
+        // Find the match to get context
+        const matchObj = matches.data.find((m) => m.id === matchId);
+        if (!matchObj) return;
+
+        // Overlay updates locally to compute advancements
+        const updatedLocalMatches = matches.data.map((m) =>
+          m.id === matchId ? { ...m, ...updates } : m
+        );
+
+        // Filter to matches in the same category/fight group
+        const categoryMatches = updatedLocalMatches.filter(
+          (m) => m.fightGroupId === matchObj.fightGroupId
+        );
+
+        // Apply pool updates if pool stages are complete
+        const poolUpdates = getPoolAdvancementUpdates(categoryMatches);
+        for (const pu of poolUpdates) {
+          await matches.update(pu.matchId, pu.updates);
+        }
+      },
+    };
+  }, [matches]);
 
   useEffect(() => {
     const handleReset = (e: Event) => {
@@ -502,7 +533,7 @@ export default function TournamentDetail() {
                 tournamentId={id!}
                 categories={categories.data}
                 fightGroups={fightGroups}
-                matches={matches}
+                matches={wrappedMatches}
                 participants={participants.data}
                 matCount={tournament.matCount}
                 registrationConfirmed={tournament.registrationConfirmed ?? false}
@@ -512,7 +543,7 @@ export default function TournamentDetail() {
               <FightControl
                 categories={categories.data}
                 fightGroups={fightGroups}
-                matches={matches}
+                matches={wrappedMatches}
                 participants={participants.data}
                 matCount={tournament.matCount ?? 1}
                 onDisqualify={(participantId) => withdrawParticipant(participantId, 'disqualified')}

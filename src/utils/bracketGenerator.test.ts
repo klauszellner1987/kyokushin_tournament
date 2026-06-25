@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { generateSingleElimination, generateRoundRobin, advanceWinner } from './bracketGenerator';
+import {
+  generateSingleElimination,
+  generateRoundRobin,
+  advanceWinner,
+  generatePoolSystem,
+  calculatePoolRankings,
+  getPoolAdvancementUpdates,
+} from './bracketGenerator';
 import type { Match } from '../types';
 
 describe('bracketGenerator', () => {
@@ -121,6 +128,76 @@ describe('bracketGenerator', () => {
       expect(result).not.toBeNull();
       expect(result?.matchId).toBe('m4');
       expect(result?.updates).toEqual({ fighter2Id: 'p2' });
+    });
+  });
+
+  describe('Pool System Logic', () => {
+    const participants = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'];
+
+    it('should generate correct pool matches and KO matches', () => {
+      const matches = generatePoolSystem('g1', participants);
+      // Pool A: 3 participants -> 3 matches
+      // Pool B: 3 participants -> 3 matches
+      // SF: 2 matches
+      // Final: 1 match
+      // Total: 9 matches
+      expect(matches).toHaveLength(9);
+
+      const poolA = matches.filter(m => m.poolName === 'Pool A');
+      const poolB = matches.filter(m => m.poolName === 'Pool B');
+      const sf = matches.filter(m => m.poolName === 'Halbfinale');
+      const finalMatch = matches.filter(m => m.poolName === 'Finale');
+
+      expect(poolA).toHaveLength(3);
+      expect(poolB).toHaveLength(3);
+      expect(sf).toHaveLength(2);
+      expect(finalMatch).toHaveLength(1);
+
+      expect(sf[0].round).toBe(10);
+      expect(sf[0].position).toBe(0);
+      expect(finalMatch[0].round).toBe(11);
+      expect(finalMatch[0].position).toBe(0);
+    });
+
+    it('should calculate pool rankings correctly based on wins and points', () => {
+      const poolMatches = [
+        { fighter1Id: 'p1', fighter2Id: 'p2', winnerId: 'p1', score1: 3, score2: 1, status: 'completed' },
+        { fighter1Id: 'p2', fighter2Id: 'p3', winnerId: 'p2', score1: 2, score2: 0, status: 'completed' },
+        { fighter1Id: 'p3', fighter2Id: 'p1', winnerId: 'p1', score1: 0, score2: 4, status: 'completed' },
+      ] as Match[];
+
+      const rankings = calculatePoolRankings(poolMatches);
+      expect(rankings[0]).toBe('p1'); // 2 wins
+      expect(rankings[1]).toBe('p2'); // 1 win
+      expect(rankings[2]).toBe('p3'); // 0 wins
+    });
+
+    it('should calculate advancements correctly when all pool matches are completed', () => {
+      const allMatches = ([
+        // Pool A (completed)
+        { id: 'a1', fightGroupId: 'g1', poolName: 'Pool A', fighter1Id: 'p1', fighter2Id: 'p2', winnerId: 'p1', score1: 3, score2: 0, status: 'completed' },
+        { id: 'a2', fightGroupId: 'g1', poolName: 'Pool A', fighter1Id: 'p2', fighter2Id: 'p3', winnerId: 'p2', score1: 2, score2: 0, status: 'completed' },
+        { id: 'a3', fightGroupId: 'g1', poolName: 'Pool A', fighter1Id: 'p3', fighter2Id: 'p1', winnerId: 'p1', score1: 0, score2: 4, status: 'completed' },
+
+        // Pool B (completed)
+        { id: 'b1', fightGroupId: 'g1', poolName: 'Pool B', fighter1Id: 'p4', fighter2Id: 'p5', winnerId: 'p4', score1: 2, score2: 1, status: 'completed' },
+        { id: 'b2', fightGroupId: 'g1', poolName: 'Pool B', fighter1Id: 'p5', fighter2Id: 'p6', winnerId: 'p5', score1: 3, score2: 0, status: 'completed' },
+        { id: 'b3', fightGroupId: 'g1', poolName: 'Pool B', fighter1Id: 'p6', fighter2Id: 'p4', winnerId: 'p4', score1: 0, score2: 5, status: 'completed' },
+
+        // SFs (empty)
+        { id: 'sf1', fightGroupId: 'g1', poolName: 'Halbfinale', position: 0, round: 10, fighter1Id: null, fighter2Id: null, status: 'pending' },
+        { id: 'sf2', fightGroupId: 'g1', poolName: 'Halbfinale', position: 1, round: 10, fighter1Id: null, fighter2Id: null, status: 'pending' },
+        { id: 'final', fightGroupId: 'g1', poolName: 'Finale', position: 0, round: 11, fighter1Id: null, fighter2Id: null, status: 'pending' }
+      ] as unknown) as Match[];
+
+      const updates = getPoolAdvancementUpdates(allMatches);
+      expect(updates).toHaveLength(4);
+
+      const sf1Update = updates.find(u => u.matchId === 'sf1');
+      const sf2Update = updates.find(u => u.matchId === 'sf2');
+
+      expect(sf1Update?.updates).toEqual({ fighter1Id: 'p1', fighter2Id: 'p5' }); // 1st A vs 2nd B
+      expect(sf2Update?.updates).toEqual({ fighter1Id: 'p4', fighter2Id: 'p2' }); // 1st B vs 2nd A
     });
   });
 });
