@@ -21,11 +21,11 @@ interface Props {
   registrationConfirmed?: boolean;
 }
 
-function getFormatLabel(discipline: string, kataSystem?: string): string {
+function getFormatLabel(discipline: string, format: string, kataSystem?: string): string {
   if (discipline === 'kata') {
     return (kataSystem ?? 'points') === 'flag' ? 'K.O. (Flaggensystem)' : 'Round Robin (Punktesystem)';
   }
-  return 'Single Elimination (K.O.)';
+  return format === 'round_robin' ? 'Jeder gegen Jeden (Round Robin)' : 'K.O.-System (Single Elimination)';
 }
 
 const emptyCategory: Omit<Category, 'id'> = {
@@ -155,7 +155,6 @@ export default function CategoryManager({ tournamentType, categories, participan
     if (!form.name.trim()) return;
     const data = { ...form };
     if (data.discipline === 'kumite') {
-      data.tournamentFormat = 'single_elimination';
       data.roundsConfigured = !!(data.fightDuration1 && data.fightDuration2);
     } else {
       data.tournamentFormat = (data.kataSystem ?? 'points') === 'flag' ? 'single_elimination' : 'round_robin';
@@ -308,6 +307,18 @@ export default function CategoryManager({ tournamentType, categories, participan
         <h5 className="text-sm font-medium text-kyokushin-text-muted mb-3">Regeln</h5>
         {form.discipline === 'kumite' ? (
           <div className="space-y-4">
+            <div>
+              <label className="block text-xs text-kyokushin-text-muted mb-1 font-semibold">Turnierformat</label>
+              <select
+                value={form.tournamentFormat}
+                onChange={(e) => setForm({ ...form, tournamentFormat: e.target.value as 'single_elimination' | 'round_robin' })}
+                className="w-full md:w-1/2 bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-kyokushin-red"
+              >
+                <option value="single_elimination">K.O.-System (Single Elimination)</option>
+                <option value="round_robin">Jeder gegen Jeden (Round Robin)</option>
+              </select>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs text-kyokushin-text-muted mb-1">1. Runde — Kampfzeit (Sekunden)</label>
@@ -544,7 +555,7 @@ export default function CategoryManager({ tournamentType, categories, participan
 
                 <div className="flex flex-wrap gap-2 text-xs mb-3">
                   <span className="bg-kyokushin-bg px-2 py-1 rounded text-kyokushin-text-muted">
-                    {getFormatLabel(c.discipline, c.kataSystem)}
+                    {getFormatLabel(c.discipline, c.tournamentFormat, c.kataSystem)}
                   </span>
                   <span className="bg-kyokushin-bg px-2 py-1 rounded text-kyokushin-text-muted capitalize">
                     {c.discipline}

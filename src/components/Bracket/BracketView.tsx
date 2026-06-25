@@ -31,7 +31,7 @@ function getFormatLabel(cat: Category): string {
   if (cat.discipline === 'kata') {
     return (cat.kataSystem ?? 'points') === 'flag' ? 'K.O. (Flagge)' : 'Round Robin (Punkte)';
   }
-  return 'Single Elimination (K.O.)';
+  return cat.tournamentFormat === 'round_robin' ? 'Jeder gegen Jeden (Round Robin)' : 'K.O.-System (Single Elimination)';
 }
 
 interface CategoryStats {
