@@ -633,6 +633,98 @@ export default function BracketView({
         </div>
       ) : category?.tournamentFormat === 'round_robin' && (category?.kataSystem ?? 'points') !== 'flag' ? (
         <div className="space-y-6">
+          {/* Grafischer Ablauf der Runden */}
+          <div className="bg-kyokushin-card border border-kyokushin-border rounded-xl p-5 overflow-x-auto">
+            <h4 className="text-xs font-bold text-kyokushin-text-muted uppercase tracking-widest mb-4">
+              Visueller Runden-Ablauf
+            </h4>
+            <div className="flex items-stretch gap-6 min-w-max pb-2">
+              {Array.from(rounds.entries())
+                .sort(([a], [b]) => a - b)
+                .map(([round, roundMatches]) => (
+                  <div key={round} className="flex flex-col shrink-0 w-56">
+                    <h5 className="text-[10px] font-bold text-kyokushin-text-muted uppercase tracking-widest mb-3 text-center bg-kyokushin-bg py-1.5 rounded border border-kyokushin-border/30">
+                      Runde {round}
+                    </h5>
+                    <div className="flex flex-col gap-3 justify-center flex-grow">
+                      {roundMatches.map((m) => {
+                        const isCompleted = m.status === 'completed';
+                        const isWalkover = m.status === 'walkover';
+                        const isDq = m.status === 'disqualification';
+                        const isFinished = isCompleted || isWalkover || isDq;
+                        const showScore = isCompleted && m.status !== 'bye';
+
+                        return (
+                          <div
+                            key={m.id}
+                            className={`rounded-lg overflow-hidden border bg-kyokushin-bg/30 transition-all ${
+                              m.status === 'running'
+                                ? 'border-kyokushin-red shadow-lg shadow-kyokushin-red/20 ring-1 ring-kyokushin-red/30'
+                                : isFinished
+                                  ? 'border-kyokushin-border/60'
+                                  : 'border-kyokushin-red/60 shadow-md shadow-kyokushin-red/10'
+                            }`}
+                          >
+                            {/* Kämpfer 1 Slot */}
+                            <div className={`flex items-center justify-between px-3 py-2 min-w-0 ${m.winnerId === m.fighter1Id ? 'bg-kyokushin-gold/15' : ''}`}>
+                              <span className={`text-sm font-medium truncate ${m.winnerId === m.fighter1Id ? 'text-kyokushin-gold font-bold' : 'text-white'}`}>
+                                {getName(m.fighter1Id)}
+                              </span>
+                              {showScore && (
+                                <span className={`text-xs font-bold ${m.winnerId === m.fighter1Id ? 'text-kyokushin-gold' : 'text-kyokushin-text-muted'}`}>
+                                  {m.score1}
+                                </span>
+                              )}
+                            </div>
+                            <div className="h-px bg-kyokushin-border/30" />
+                            {/* Kämpfer 2 Slot */}
+                            <div className={`flex items-center justify-between px-3 py-2 min-w-0 ${m.winnerId === m.fighter2Id ? 'bg-kyokushin-gold/15' : ''}`}>
+                              <span className={`text-sm font-medium truncate ${m.winnerId === m.fighter2Id ? 'text-kyokushin-gold font-bold' : 'text-white'}`}>
+                                {getName(m.fighter2Id)}
+                              </span>
+                              {showScore && (
+                                <span className={`text-xs font-bold ${m.winnerId === m.fighter2Id ? 'text-kyokushin-gold' : 'text-kyokushin-text-muted'}`}>
+                                  {m.score2}
+                                </span>
+                              )}
+                            </div>
+                            {isWalkover && (
+                              <div className="bg-amber-500/10 px-3 py-0.5 text-center border-t border-kyokushin-border/30">
+                                <span className="text-[10px] text-amber-400 font-medium">W.O.</span>
+                              </div>
+                            )}
+                            {isDq && (
+                              <div className="bg-red-500/10 px-3 py-0.5 text-center border-t border-kyokushin-border/30">
+                                <span className="text-[10px] text-red-400 font-medium">DSQ</span>
+                              </div>
+                            )}
+                            
+                            {/* Ergebnis-Aktion */}
+                            {m.status !== 'completed' && m.status !== 'walkover' && m.status !== 'disqualification' && m.fighter1Id && m.fighter2Id && (
+                              <button
+                                onClick={() => { setResultModal(m); setScore1(0); setScore2(0); }}
+                                className="w-full bg-kyokushin-red/10 border-t border-kyokushin-red/20 hover:bg-kyokushin-red/25 text-kyokushin-red hover:text-white py-1.5 text-xs font-bold transition-all text-center cursor-pointer"
+                              >
+                                Ergebnis eintragen
+                              </button>
+                            )}
+                            {isFinished && (
+                              <button
+                                onClick={() => { setCorrectionModal(m); setCorrScore1(m.score1); setCorrScore2(m.score2); }}
+                                className="w-full bg-amber-500/5 border-t border-amber-500/15 hover:bg-amber-500/15 text-amber-400/80 hover:text-amber-300 py-1 text-[10px] font-medium transition-all text-center cursor-pointer"
+                              >
+                                Korrigieren
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+
           <div className="bg-kyokushin-card border border-kyokushin-border rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
