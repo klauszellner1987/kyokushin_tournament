@@ -369,16 +369,16 @@ export default function BracketView({
   }
   const totalRounds = Math.max(...Array.from(rounds.keys()), 0);
 
-  const roundRobinRanking = useMemo(() => {
-    if (category?.tournamentFormat !== 'round_robin' || matchesForCategory.length === 0) return [];
-    return getPoolRanking(matchesForCategory);
-  }, [matchesForCategory, category, getPoolRanking]);
+  const activeFormat = category?.tournamentFormat;
+  const roundRobinRanking = activeFormat === 'round_robin' && matchesForCategory.length > 0
+    ? getPoolRanking(matchesForCategory)
+    : [];
 
   const poolAMatches = useMemo(() => matchesForCategory.filter(m => m.poolName === 'Pool A'), [matchesForCategory]);
   const poolBMatches = useMemo(() => matchesForCategory.filter(m => m.poolName === 'Pool B'), [matchesForCategory]);
   const koMatches = useMemo(() => matchesForCategory.filter(m => m.poolName === 'Halbfinale' || m.poolName === 'Finale'), [matchesForCategory]);
-  const poolARanking = useMemo(() => getPoolRanking(poolAMatches), [poolAMatches, getPoolRanking]);
-  const poolBRanking = useMemo(() => getPoolRanking(poolBMatches), [poolBMatches, getPoolRanking]);
+  const poolARanking = getPoolRanking(poolAMatches);
+  const poolBRanking = getPoolRanking(poolBMatches);
 
   const handleGenerateRequest = () => {
     if (!category) return;

@@ -65,7 +65,7 @@ async function getPwaPlugin(): Promise<PluginOption[]> {
       ],
     },
     devOptions: {
-      enabled: true,
+      enabled: false,
     },
   })];
   } catch {
