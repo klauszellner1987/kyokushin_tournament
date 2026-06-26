@@ -1,8 +1,8 @@
 import { useTimer } from '../../hooks/useTimer';
 
 interface Props {
-  timerEndsAt?: number;
-  timerPausedRemaining?: number;
+  timerEndsAt?: number | null;
+  timerPausedRemaining?: number | null;
   size?: 'normal' | 'large';
 }
 

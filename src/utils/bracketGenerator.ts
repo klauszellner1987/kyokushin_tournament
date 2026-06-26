@@ -200,10 +200,10 @@ export function collectCascadeResets(
         score1: 0,
         score2: 0,
         status: 'pending' as const,
-        timerEndsAt: undefined,
-        timerPausedRemaining: undefined,
-        fightRound: undefined,
-        isExtension: undefined,
+        timerEndsAt: null,
+        timerPausedRemaining: null,
+        fightRound: null,
+        isExtension: null,
       },
     });
   } else {
@@ -417,10 +417,10 @@ export function getPoolAdvancementUpdates(allMatches: Match[]): { matchId: strin
       sf1Updates.winnerId = null;
       sf1Updates.score1 = 0;
       sf1Updates.score2 = 0;
-      sf1Updates.timerEndsAt = undefined;
-      sf1Updates.timerPausedRemaining = undefined;
-      sf1Updates.fightRound = undefined;
-      sf1Updates.isExtension = undefined;
+      sf1Updates.timerEndsAt = null;
+      sf1Updates.timerPausedRemaining = null;
+      sf1Updates.fightRound = null;
+      sf1Updates.isExtension = null;
     }
     updates.push({ matchId: sf1.id, updates: sf1Updates });
 
@@ -440,10 +440,10 @@ export function getPoolAdvancementUpdates(allMatches: Match[]): { matchId: strin
       sf2Updates.winnerId = null;
       sf2Updates.score1 = 0;
       sf2Updates.score2 = 0;
-      sf2Updates.timerEndsAt = undefined;
-      sf2Updates.timerPausedRemaining = undefined;
-      sf2Updates.fightRound = undefined;
-      sf2Updates.isExtension = undefined;
+      sf2Updates.timerEndsAt = null;
+      sf2Updates.timerPausedRemaining = null;
+      sf2Updates.fightRound = null;
+      sf2Updates.isExtension = null;
     }
     updates.push({ matchId: sf2.id, updates: sf2Updates });
 

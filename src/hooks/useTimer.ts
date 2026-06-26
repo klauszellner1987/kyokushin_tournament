@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-export function useTimer(timerEndsAt?: number, timerPausedRemaining?: number) {
+export function useTimer(timerEndsAt?: number | null, timerPausedRemaining?: number | null) {
   const [now, setNow] = useState<number>(() => new Date().getTime());
 
   useEffect(() => {

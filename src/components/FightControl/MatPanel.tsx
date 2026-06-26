@@ -117,7 +117,7 @@ export default function MatPanel({
       await onUpdateMatch(currentMatch.id, {
         status: 'running',
         timerEndsAt: now + duration * 1000,
-        timerPausedRemaining: undefined,
+        timerPausedRemaining: null,
       });
     }
     setTimerExpiredHandled(null);
@@ -129,7 +129,7 @@ export default function MatPanel({
     const remaining = Math.max(0, (currentMatch.timerEndsAt - now) / 1000);
     await onUpdateMatch(currentMatch.id, {
       timerPausedRemaining: remaining,
-      timerEndsAt: undefined,
+      timerEndsAt: null,
     });
   };
 
@@ -138,7 +138,7 @@ export default function MatPanel({
     const now = new Date().getTime();
     await onUpdateMatch(currentMatch.id, {
       timerEndsAt: now + currentMatch.timerPausedRemaining * 1000,
-      timerPausedRemaining: undefined,
+      timerPausedRemaining: null,
     });
   };
 
@@ -164,8 +164,8 @@ export default function MatPanel({
       score1: 0,
       score2: 0,
       status: 'disqualification',
-      timerEndsAt: undefined,
-      timerPausedRemaining: undefined,
+      timerEndsAt: null,
+      timerPausedRemaining: null,
     });
 
     const updatedMatch = { ...currentMatch, winnerId, score1: 0, score2: 0, status: 'disqualification' as const };
@@ -196,8 +196,8 @@ export default function MatPanel({
       fightRound: nextRound,
       isExtension: nextRound >= 2,
       status: 'pending',
-      timerEndsAt: undefined,
-      timerPausedRemaining: undefined,
+      timerEndsAt: null,
+      timerPausedRemaining: null,
     });
     setTimerExpiredHandled(null);
   };
@@ -219,8 +219,8 @@ export default function MatPanel({
       score1,
       score2,
       status: 'completed',
-      timerEndsAt: undefined,
-      timerPausedRemaining: undefined,
+      timerEndsAt: null,
+      timerPausedRemaining: null,
     });
 
     const updatedMatch = { ...currentMatch, winnerId, score1, score2, status: 'completed' as const };
@@ -248,8 +248,8 @@ export default function MatPanel({
       score1: s1,
       score2: s2,
       status: 'completed',
-      timerEndsAt: undefined,
-      timerPausedRemaining: undefined,
+      timerEndsAt: null,
+      timerPausedRemaining: null,
     });
 
     const updatedMatch = { ...currentMatch, winnerId, score1: s1, score2: s2, status: 'completed' as const };
@@ -278,8 +278,8 @@ export default function MatPanel({
       score1: s1,
       score2: s2,
       status: 'completed',
-      timerEndsAt: undefined,
-      timerPausedRemaining: undefined,
+      timerEndsAt: null,
+      timerPausedRemaining: null,
     });
 
     const updatedMatch = { ...currentMatch, winnerId, score1: s1, score2: s2, status: 'completed' as const };

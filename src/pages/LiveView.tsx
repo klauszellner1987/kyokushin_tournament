@@ -28,7 +28,7 @@ function FighterCard({ fighter }: { fighter: Participant }) {
   );
 }
 
-function LiveTimer({ timerEndsAt, timerPausedRemaining }: { timerEndsAt?: number; timerPausedRemaining?: number }) {
+function LiveTimer({ timerEndsAt, timerPausedRemaining }: { timerEndsAt?: number | null; timerPausedRemaining?: number | null }) {
   const { formatted, isRunning, isPaused, isExpired, isWarning } = useTimer(timerEndsAt, timerPausedRemaining);
 
   return (
@@ -336,7 +336,7 @@ function SingleMatView({
   );
 }
 
-function OverviewMatTimer({ timerEndsAt, timerPausedRemaining }: { timerEndsAt?: number; timerPausedRemaining?: number }) {
+function OverviewMatTimer({ timerEndsAt, timerPausedRemaining }: { timerEndsAt?: number | null; timerPausedRemaining?: number | null }) {
   const { formatted, isWarning, isExpired, isPaused } = useTimer(timerEndsAt, timerPausedRemaining);
   return (
     <div className={`font-mono font-black tabular-nums text-2xl ${

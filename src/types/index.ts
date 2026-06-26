@@ -125,10 +125,10 @@ export interface Match {
   matNumber: number;
   scheduledOrder: number;
   weightDifference?: number;
-  timerEndsAt?: number;
-  timerPausedRemaining?: number;
-  isExtension?: boolean;
-  fightRound?: number;
+  timerEndsAt?: number | null;
+  timerPausedRemaining?: number | null;
+  isExtension?: boolean | null;
+  fightRound?: number | null;
   poolName?: string;
 }
 
