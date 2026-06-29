@@ -73,6 +73,12 @@ export default function BracketView({
   const [corrScore2, setCorrScore2] = useState(0);
   const [correctionError, setCorrectionError] = useState<string | null>(null);
 
+  // Manual Fighter Correction States
+  const [editingFightersMatch, setEditingFightersMatch] = useState<Match | null>(null);
+  const [editFighter1Id, setEditFighter1Id] = useState<string | null>(null);
+  const [editFighter2Id, setEditFighter2Id] = useState<string | null>(null);
+  const [showAllTournamentParticipants, setShowAllTournamentParticipants] = useState(false);
+
   const participantMap = useMemo(() => new Map(participants.map((p) => [p.id, p])), [participants]);
 
   const { assignments } = useMemo(
@@ -538,6 +544,22 @@ export default function BracketView({
     setCorrectionModal(null);
     setCorrScore1(0);
     setCorrScore2(0);
+  };
+
+  const handleOpenFighterEdit = (match: Match) => {
+    setEditingFightersMatch(match);
+    setEditFighter1Id(match.fighter1Id);
+    setEditFighter2Id(match.fighter2Id);
+    setShowAllTournamentParticipants(false);
+  };
+
+  const handleSaveFighters = async () => {
+    if (!editingFightersMatch) return;
+    await matches.update(editingFightersMatch.id, {
+      fighter1Id: editFighter1Id || null,
+      fighter2Id: editFighter2Id || null,
+    });
+    setEditingFightersMatch(null);
   };
 
   const handleWeightSave = async (matchId: string) => {
@@ -1067,9 +1089,20 @@ export default function BracketView({
       {resultModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
           <div className="bg-kyokushin-card border border-kyokushin-border rounded-xl p-8 w-full max-w-md">
-            <h3 className="text-xl font-bold text-white text-center mb-6">
+            <h3 className="text-xl font-bold text-white text-center mb-2">
               Ergebnis eintragen
             </h3>
+            <div className="flex justify-center mb-6">
+              <button
+                onClick={() => {
+                  handleOpenFighterEdit(resultModal);
+                  setResultModal(null);
+                }}
+                className="text-xs font-semibold text-kyokushin-gold hover:text-yellow-600 bg-kyokushin-gold/10 hover:bg-kyokushin-gold/20 px-3 py-1.5 rounded-lg border border-kyokushin-gold/30 transition-all cursor-pointer"
+              >
+                Kämpfer bearbeiten
+              </button>
+            </div>
 
             {category?.kataSystem === 'flag' ? (
               <>
@@ -1155,6 +1188,17 @@ export default function BracketView({
             <h3 className="text-xl font-bold text-white text-center mb-2">
               Ergebnis korrigieren
             </h3>
+            <div className="flex justify-center mb-4">
+              <button
+                onClick={() => {
+                  handleOpenFighterEdit(correctionModal);
+                  setCorrectionModal(null);
+                }}
+                className="text-xs font-semibold text-kyokushin-gold hover:text-yellow-600 bg-kyokushin-gold/10 hover:bg-kyokushin-gold/20 px-3 py-1.5 rounded-lg border border-kyokushin-gold/30 transition-all cursor-pointer"
+              >
+                Kämpfer bearbeiten
+              </button>
+            </div>
 
             {(() => {
               const catMatches = getMatchesForCategory(activeCategory!);
@@ -1250,6 +1294,110 @@ export default function BracketView({
                 className="flex-1 bg-kyokushin-red hover:bg-kyokushin-red-dark text-white py-3 rounded-lg font-bold transition-colors"
               >
                 Neu generieren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fighter Editor Modal */}
+      {editingFightersMatch && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-kyokushin-card border border-kyokushin-border rounded-xl p-8 w-full max-w-md shadow-2xl">
+            <h3 className="text-xl font-bold text-white text-center mb-4">
+              Kämpfer bearbeiten
+            </h3>
+            <p className="text-xs text-kyokushin-text-muted text-center mb-6">
+              Passe die Kämpfer für diesen Kampf manuell an.
+            </p>
+
+            {/* Fighter 1 Selection */}
+            <div className="space-y-2 mb-4">
+              <label className="block text-xs font-bold text-red-400 uppercase tracking-wide">
+                Kämpfer 1 (Rot)
+              </label>
+              <select
+                value={editFighter1Id || ''}
+                onChange={(e) => setEditFighter1Id(e.target.value || null)}
+                className="w-full bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-kyokushin-red"
+              >
+                <option value="">-- Noch offen / Kein Kämpfer --</option>
+                {(() => {
+                  const candidates = showAllTournamentParticipants
+                    ? participants
+                    : participants.filter((p) => p.categoryIds.includes(activeCategory || ''));
+
+                  return candidates.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.lastName}, {p.firstName} ({p.club})
+                    </option>
+                  ));
+                })()}
+              </select>
+            </div>
+
+            {/* Fighter 2 Selection */}
+            <div className="space-y-2 mb-6">
+              <label className="block text-xs font-bold text-blue-300 uppercase tracking-wide">
+                Kämpfer 2 (Weiß)
+              </label>
+              <select
+                value={editFighter2Id || ''}
+                onChange={(e) => setEditFighter2Id(e.target.value || null)}
+                className="w-full bg-kyokushin-bg border border-kyokushin-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-kyokushin-red"
+              >
+                <option value="">-- Noch offen / Kein Kämpfer --</option>
+                {(() => {
+                  const candidates = showAllTournamentParticipants
+                    ? participants
+                    : participants.filter((p) => p.categoryIds.includes(activeCategory || ''));
+
+                  return candidates.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.lastName}, {p.firstName} ({p.club})
+                    </option>
+                  ));
+                })()}
+              </select>
+            </div>
+
+            {/* Same Fighter Warning */}
+            {editFighter1Id && editFighter2Id && editFighter1Id === editFighter2Id && (
+              <div className="mb-6 bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-start gap-2">
+                <AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-red-300">
+                  Ein Kämpfer kann nicht gegen sich selbst antreten!
+                </p>
+              </div>
+            )}
+
+            {/* Show All Checkbox */}
+            <div className="flex items-center gap-2 mb-6">
+              <input
+                type="checkbox"
+                id="show_all_participants_bracket"
+                checked={showAllTournamentParticipants}
+                onChange={(e) => setShowAllTournamentParticipants(e.target.checked)}
+                className="rounded border-kyokushin-border bg-kyokushin-bg text-kyokushin-red focus:ring-0"
+              />
+              <label htmlFor="show_all_participants_bracket" className="text-xs text-kyokushin-text-muted hover:text-white cursor-pointer select-none">
+                Alle Turnier-Teilnehmer anzeigen (nicht nur aus dieser Kategorie)
+              </label>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleSaveFighters}
+                disabled={!!(editFighter1Id && editFighter2Id && editFighter1Id === editFighter2Id)}
+                className="flex-1 bg-kyokushin-red hover:bg-kyokushin-red-dark disabled:opacity-50 text-white py-3 rounded-lg font-bold transition-colors cursor-pointer"
+              >
+                Speichern
+              </button>
+              <button
+                onClick={() => setEditingFightersMatch(null)}
+                className="bg-kyokushin-border hover:bg-kyokushin-card-hover text-white px-6 py-3 rounded-lg transition-colors cursor-pointer"
+              >
+                Abbrechen
               </button>
             </div>
           </div>
