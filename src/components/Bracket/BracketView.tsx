@@ -11,7 +11,7 @@ import {
   hasRunningDownstream,
   generatePoolSystem,
 } from '../../utils/bracketGenerator';
-import { distributeCategoriesToMats, scheduleMatchesToMats } from '../../utils/matScheduler';
+import { recalculateGlobalSchedule } from '../../utils/globalScheduler';
 import BracketTree from './BracketTree';
 import TouchScorePicker from '../ui/TouchScorePicker';
 
@@ -452,11 +452,12 @@ export default function BracketView({
       ...matches.data.filter((m) => !addedMatches.some((a) => a.id === m.id)),
       ...addedMatches,
     ];
-    const matAssignments = distributeCategoriesToMats(categories, allGroups, allMatches, matCount);
-    const schedule = scheduleMatchesToMats(addedMatches, allGroups, matAssignments);
-
-    for (const s of schedule) {
-      await matches.update(s.matchId, { matNumber: s.matNumber, scheduledOrder: s.scheduledOrder });
+    const scheduleUpdates = recalculateGlobalSchedule(allMatches, categories, allGroups, matCount);
+    for (const u of scheduleUpdates) {
+      const currentMatch = allMatches.find(m => m.id === u.matchId);
+      if (currentMatch && (currentMatch.matNumber !== u.matNumber || currentMatch.scheduledOrder !== u.scheduledOrder)) {
+        await matches.update(u.matchId, { matNumber: u.matNumber, scheduledOrder: u.scheduledOrder });
+      }
     }
 
     await fightGroups.update(groupId, { status: 'running' });
@@ -561,6 +562,27 @@ export default function BracketView({
               {categories.length} Kategorien
             </p>
           </div>
+          {categories.length > 0 && matches.data.length > 0 && (
+            <button
+              onClick={async () => {
+                if (!window.confirm("Bist du sicher, dass du den Zeitplan für alle ausstehenden Kämpfe neu berechnen möchtest? Bereits gestartete oder abgeschlossene Kämpfe bleiben unberührt.")) return;
+                const scheduleUpdates = recalculateGlobalSchedule(matches.data, categories, fightGroups.data, matCount);
+                let updatedCount = 0;
+                for (const u of scheduleUpdates) {
+                  const currentMatch = matches.data.find(m => m.id === u.matchId);
+                  if (currentMatch && (currentMatch.matNumber !== u.matNumber || currentMatch.scheduledOrder !== u.scheduledOrder)) {
+                    await matches.update(u.matchId, { matNumber: u.matNumber, scheduledOrder: u.scheduledOrder });
+                    updatedCount++;
+                  }
+                }
+                alert(`Zeitplan neu berechnet. ${updatedCount} Kämpfe wurden angepasst.`);
+              }}
+              className="flex items-center gap-2 bg-kyokushin-red/10 border border-kyokushin-red/30 hover:bg-kyokushin-red/25 text-kyokushin-red px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Clock size={16} />
+              Zeitplan neu berechnen
+            </button>
+          )}
         </div>
 
         {categories.length === 0 ? (

@@ -124,6 +124,7 @@ export interface Match {
   status: MatchStatus;
   matNumber: number;
   scheduledOrder: number;
+  priority?: number | null;
   weightDifference?: number;
   timerEndsAt?: number | null;
   timerPausedRemaining?: number | null;

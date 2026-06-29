@@ -6,7 +6,6 @@ import { useTimer } from '../../hooks/useTimer';
 import FightTimer from './FightTimer';
 import BracketTree from '../Bracket/BracketTree';
 import TouchScorePicker from '../ui/TouchScorePicker';
-
 interface Props {
   matNumber: number;
   currentMatch: Match | null;

@@ -158,9 +158,13 @@ export function getMatOverview(
     const runningMatch = matMatches.find(
       (m) => m.status === 'running' && m.fighter1Id && m.fighter2Id,
     );
-    const pendingReady = matMatches
-      .filter((m) => m.status === 'pending' && m.fighter1Id && m.fighter2Id)
-      .sort((a, b) => a.scheduledOrder - b.scheduledOrder);
+      const pendingReady = matMatches
+        .filter((m) => m.status === 'pending' && m.fighter1Id && m.fighter2Id)
+        .sort((a, b) => {
+          const aKey = a.priority ?? a.scheduledOrder;
+          const bKey = b.priority ?? b.scheduledOrder;
+          return aKey - bKey;
+        });
 
     const current = runningMatch ?? pendingReady[0] ?? null;
     const next = runningMatch ? pendingReady[0] : pendingReady[1];

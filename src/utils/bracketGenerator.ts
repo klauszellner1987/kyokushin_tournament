@@ -112,8 +112,8 @@ export function generateRoundRobin(
       const home = ids[i];
       const away = ids[n - 1 - i];
 
-      if (home === '__BYE__' || away === '__BYE__') continue;
-
+      // Guard against self‑match or BYE entries
+      if (home === '__BYE__' || away === '__BYE__' || home === away) continue;
       matches.push({
         fightGroupId,
         round: round + 1,
@@ -127,6 +127,7 @@ export function generateRoundRobin(
         matNumber: 0,
         scheduledOrder: 0,
       });
+
     }
 
     // Rotate: keep first element fixed, rotate rest
@@ -136,6 +137,32 @@ export function generateRoundRobin(
 
   return matches;
 }
+
+// Helper: reorder matches within each round to avoid a participant fighting back-to-back
+function reorderMatchesNoConsecutive(matches: any[]): any[] {
+  const byRound = new Map<number, any[]>();
+  matches.forEach(m => {
+    if (!byRound.has(m.round)) byRound.set(m.round, []);
+    byRound.get(m.round)!.push(m);
+  });
+  const ordered: any[] = [];
+  const rounds = Array.from(byRound.keys()).sort((a, b) => a - b);
+  rounds.forEach(r => {
+    const remaining = [...byRound.get(r)!];
+    let lastIds: (string | null)[] = [];
+    while (remaining.length) {
+      const idx = remaining.findIndex(m => {
+        const ids = [m.fighter1Id, m.fighter2Id].filter(Boolean);
+        return !ids.some(id => lastIds.includes(id));
+      });
+      const match = idx === -1 ? remaining.shift()! : remaining.splice(idx, 1)[0];
+      ordered.push(match);
+      lastIds = [match.fighter1Id, match.fighter2Id].filter(Boolean);
+    }
+  });
+  return ordered;
+}
+
 
 export function advanceWinner(
   allMatches: Match[],
@@ -339,7 +366,8 @@ export function generatePoolSystem(
     },
   ];
 
-  return [...poolAMatches, ...poolBMatches, ...sfMatches, ...finalMatch];
+  const allMatches = [...poolAMatches, ...poolBMatches, ...sfMatches, ...finalMatch];
+  return reorderMatchesNoConsecutive(allMatches);
 }
 
 export function calculatePoolRankings(poolMatches: Match[]): string[] {
