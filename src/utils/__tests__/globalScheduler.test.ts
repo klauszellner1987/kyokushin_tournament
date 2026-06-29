@@ -99,4 +99,69 @@ describe('Global Scheduler Tests', () => {
     expect(pendingUpdate1?.scheduledOrder).toBe(2);
     expect(pendingUpdate1?.matNumber).toBe(1);
   });
+
+  it('should interleave pending matches of different categories by round number', () => {
+    const allMatches: Match[] = [
+      {
+        id: 'match-pending-a2',
+        fightGroupId: 'group-1',
+        round: 2,
+        position: 1,
+        fighter1Id: 'p1',
+        fighter2Id: 'p2',
+        winnerId: null,
+        score1: 0,
+        score2: 0,
+        status: 'pending',
+        matNumber: 1,
+        scheduledOrder: 0,
+      },
+      {
+        id: 'match-pending-b1',
+        fightGroupId: 'group-2',
+        round: 1,
+        position: 1,
+        fighter1Id: 'p3',
+        fighter2Id: 'p4',
+        winnerId: null,
+        score1: 0,
+        score2: 0,
+        status: 'pending',
+        matNumber: 1,
+        scheduledOrder: 0,
+      },
+      {
+        id: 'match-pending-a1',
+        fightGroupId: 'group-1',
+        round: 1,
+        position: 2,
+        fighter1Id: 'p1',
+        fighter2Id: 'p2',
+        winnerId: null,
+        score1: 0,
+        score2: 0,
+        status: 'pending',
+        matNumber: 1,
+        scheduledOrder: 0,
+      },
+    ];
+
+    const categories: Category[] = [
+      { ...dummyCategories[0], name: 'Category A' },
+      { ...dummyCategories[1], name: 'Category B' },
+    ];
+    const updates = recalculateGlobalSchedule(allMatches, categories, dummyFightGroups, 1);
+
+    const a1Update = updates.find((u) => u.matchId === 'match-pending-a1');
+    const b1Update = updates.find((u) => u.matchId === 'match-pending-b1');
+    const a2Update = updates.find((u) => u.matchId === 'match-pending-a2');
+
+    expect(a1Update?.matNumber).toBe(1);
+    expect(b1Update?.matNumber).toBe(1);
+    expect(a2Update?.matNumber).toBe(1);
+
+    expect(a1Update?.scheduledOrder).toBe(1);
+    expect(b1Update?.scheduledOrder).toBe(2);
+    expect(a2Update?.scheduledOrder).toBe(3);
+  });
 });

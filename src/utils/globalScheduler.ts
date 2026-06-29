@@ -80,17 +80,23 @@ export function recalculateGlobalSchedule(
 
     const matPending = matPendingQueues.get(matNum) ?? [];
     
-    // Sort pending matches on this mat by their user priority, scheduledOrder, category name, or round/pos
+    // Sort pending matches on this mat by:
+    // 1. User priority (e.g. setNextMatch or manual prioritization)
+    // 2. Round number (interleave rounds across categories so Vorrunden of all categories happen before Halbfinale, etc.)
+    // 3. Category name/ID (keep logical group ordering within the same round)
+    // 4. Position within that round
     matPending.sort((a, b) => {
       const aPriority = a.priority ?? a.scheduledOrder ?? 9999;
       const bPriority = b.priority ?? b.scheduledOrder ?? 9999;
       if (aPriority !== bPriority) return aPriority - bPriority;
 
+      if (a.round !== b.round) return a.round - b.round;
+
       const catA = groupCategoryMap.get(a.fightGroupId) ?? '';
       const catB = groupCategoryMap.get(b.fightGroupId) ?? '';
       if (catA !== catB) return catA.localeCompare(catB);
 
-      return a.round - b.round || a.position - b.position;
+      return a.position - b.position;
     });
 
     const allMatMatches = [...matLocked, ...matPending];
